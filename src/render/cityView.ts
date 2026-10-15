@@ -1,4 +1,9 @@
-import type { Quality } from "./quality.ts";
+import { currentQuality, reducedMotion, type Quality } from "./quality.ts";
+import { CSMShadowNode } from "three/addons/csm/CSMShadowNode.js";
+import { runnerModel, animateRunner, firstPersonArms } from "./models/runner.ts";
+import { disposeObject } from "./models/parts.ts";
+import { districtDetails } from "./models/district.ts";
+import { microSurface } from "./surface.ts";
 // City run view. Scene units are metres here (the runner's world); the car and
 // the course come from the sim in sim units and sit in a group scaled by 1/10.
 //
@@ -54,6 +59,10 @@ export class CityView implements View {
   private trailPts: THREE.Vector3[] = [];
   private glow: THREE.Sprite;
   private runnerBody: THREE.Group;
+  private arms = firstPersonArms();
+  private details: THREE.Group | null = null;
+  private csmProjection = "";
+  private csm: CSMShadowNode | null = null;
   private markers: { seg: number; branch: number; mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; pos: THREE.Vector3; label: string }[] = [];
   readonly forkChoice = new Map<number, number>();
   input: RunnerInput = { moveX: 0, moveY: 0, lookX: 0, lookY: 0, sprint: false, jump: false, slide: false };
@@ -68,10 +77,10 @@ export class CityView implements View {
 
   constructor(course: CourseDef, build: Build, settings: Settings, uploads?: UploadLookup) {
     this.settings = settings;
-    this.scene.background = new THREE.Color(0x9cc8ec);
-    this.scene.fog = new THREE.Fog(0x9cc8ec, 90, 330);
-    const hemi = new THREE.HemisphereLight(0xe8f2ff, 0x6b6253, 1.5);
-    const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
+    this.scene.background = new THREE.Color(0xbac6cb);
+    this.scene.fog = new THREE.Fog(0xbac6cb, 90, 330);
+    const hemi = new THREE.HemisphereLight(0xe8f2ff, 0x6b6253, .65);
+    const sun = new THREE.DirectionalLight(0xfff1d6, 3.2);
     sun.position.set(60, 120, 40);
     sun.castShadow = true;
     const sc = sun.shadow.camera as THREE.OrthographicCamera;
@@ -79,7 +88,12 @@ export class CityView implements View {
     sc.right = sc.top = 110;
     sc.far = 400;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.bias = -0.0006;
+    sun.shadow.bias = -0.0001;
+    sun.shadow.normalBias = .015;
+    if(["high","ultra"].includes(currentQuality())) {
+      this.csm=new CSMShadowNode(sun,{cascades:3,maxFar:160,lightMargin:45});
+      sun.shadow.shadowNode=this.csm;
+    }
     this.scene.add(hemi, sun, sun.target);
     this.scene.add(this.world);
 
@@ -108,19 +122,9 @@ export class CityView implements View {
     this.disposables.push(trailGeo, trailMat, glowTex, glowMat);
 
     // The runner's body (seen in third person and from the drone).
-    this.runnerBody = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1f6feb, roughness: 0.6 });
-    const skin = new THREE.MeshStandardMaterial({ color: 0xf1c7a1, roughness: 0.7 });
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.8, 4, 10), bodyMat);
-    torso.position.y = 0.95;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), skin);
-    head.position.y = 1.6;
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xe8402a }));
-    cap.position.y = 1.64;
-    this.runnerBody.add(torso, head, cap);
-    this.runnerBody.traverse((o) => ((o as THREE.Mesh).castShadow = true));
-    this.scene.add(this.runnerBody);
-    this.disposables.push(bodyMat, skin);
+    this.runnerBody = runnerModel();
+    this.scene.add(this.runnerBody, this.camera);
+    this.camera.add(this.arms);
 
     const s = course.runnerStart;
     const st = this.geos[0].strips[0];
@@ -135,9 +139,15 @@ export class CityView implements View {
 
   private buildCity() {
     const boxes = cityBoxes();
+    this.details=districtDetails(boxes);this.world.add(this.details);
     const facadeTex = windowTexture();
     facadeTex.wrapS = facadeTex.wrapT = THREE.RepeatWrapping;
-    const facadeMat = new THREE.MeshStandardMaterial({ map: facadeTex, vertexColors: true, roughness: 0.85 });
+    const facadeDetail = microSurface(128,83);
+    const rough=facadeDetail.roughness.image.data as Uint8Array;
+    for(let y=22;y<86;y++)for(let x=26;x<102;x++){const i=(y*128+x)*4;rough[i]=rough[i+1]=rough[i+2]=80;}
+    facadeDetail.roughness.flipY=true;
+    const facadeMat = new THREE.MeshStandardMaterial({ map: facadeTex, vertexColors: true, roughness: .72, normalMap: facadeDetail.normal, roughnessMap:facadeDetail.roughness, normalScale:new THREE.Vector2(.3,.3) });
+    this.disposables.push(facadeDetail.normal,facadeDetail.roughness);
     const plainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
     const buildings = boxes.filter((b) => b.kind === "building");
     const plain = boxes.filter((b) => b.kind !== "building" && b.kind !== "ground");
@@ -151,7 +161,10 @@ export class CityView implements View {
 
     // Ground: asphalt with road markings, plaza paving, the pit.
     const roadTex = roadTexture();
-    const roadMat = new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.95 });
+    const asphalt = microSurface(256,42);
+    asphalt.normal.repeat.set(400,400);asphalt.roughness.repeat.set(400,400);
+    const roadMat = new THREE.MeshStandardMaterial({ map: roadTex, roughness: .94,normalMap:asphalt.normal,roughnessMap:asphalt.roughness,normalScale:new THREE.Vector2(.8,.8) });
+    this.disposables.push(asphalt.normal,asphalt.roughness);
     const road = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), roadMat);
     road.rotation.x = -Math.PI / 2;
     road.receiveShadow = true;
@@ -197,7 +210,7 @@ export class CityView implements View {
       ring.add(m);
     }
     this.world.add(ring, pit, pitWalls);
-    void plaza;
+    plaza.geometry.dispose();
     // Ramps into the pit.
     for (const r of this.collision.ramps) {
       const len = r.x1 - r.x0;
@@ -339,6 +352,9 @@ export class CityView implements View {
     const r = this.runner;
     this.runnerBody.position.set(r.pos.x, r.pos.y, r.pos.z);
     this.runnerBody.rotation.y = -r.yaw + Math.PI / 2;
+    animateRunner(this.runnerBody,r.stride,r.speed);
+    this.arms.visible=this.settings.cityView === "first";
+    this.arms.rotation.z=reducedMotion()?0:Math.sin(r.stride*2.4)*Math.min(.035,r.speed*.004);
     this.runnerBody.scale.y = r.mode === "slide" ? 0.55 : 1;
 
     // HUD numbers.
@@ -391,7 +407,7 @@ export class CityView implements View {
     this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 5);
     const look = new THREE.Vector3(Math.cos(r.yaw) * Math.cos(r.pitch), Math.sin(r.pitch), Math.sin(r.yaw) * Math.cos(r.pitch));
     if (s.cityView === "first") {
-      this.bob = s.headBob && r.onGround ? Math.sin(r.stride * 2.4) * 0.045 * Math.min(1, r.speed / RUN.jog) : 0;
+      this.bob = s.headBob && !reducedMotion() && r.onGround ? Math.sin(r.stride * 2.4) * 0.045 * Math.min(1, r.speed / RUN.jog) : 0;
       const eye = r.mode === "slide" ? 0.75 : RUN.eye - this.lowCam * 0.55;
       this.camera.position.set(r.pos.x, r.pos.y + eye + this.bob, r.pos.z);
       this.camera.lookAt(this.camera.position.clone().add(look));
@@ -412,10 +428,14 @@ export class CityView implements View {
       this.runnerBody.visible = true;
     }
     this.camera.updateProjectionMatrix();
+    const projection=`${Math.round(this.camera.fov*4)}:${this.camera.aspect}`;
+    if(this.csm?.camera && projection!==this.csmProjection){this.csm.updateFrustums();this.csmProjection=projection;}
   }
 
   dispose(): void {
     this.car.dispose();
+    if(this.details)disposeObject(this.details);
+    disposeObject(this.runnerBody);disposeObject(this.arms);this.csm?.dispose();
     this.disposables.forEach((d) => d.dispose());
     this.world.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -458,7 +478,7 @@ function mergeBoxes(boxes: Box[], windows: boolean): THREE.BufferGeometry {
   const idx: number[] = [];
   const c = new THREE.Color();
   for (const b of boxes) {
-    c.setHex(b.color);
+    c.setHex(b.color).lerp(new THREE.Color(0xb4b1a7), .25);
     const swap = b.ry !== undefined && Math.abs(Math.abs(b.ry) - Math.PI / 2) < 1e-3;
     const hx = swap ? b.hz : b.hx,
       hz = swap ? b.hx : b.hz,
@@ -511,8 +531,10 @@ function windowTexture(): THREE.CanvasTexture {
   ctx.fillRect(0, 0, 128, 128);
   ctx.fillStyle = "#3c4a5e";
   ctx.fillRect(26, 22, 76, 64);
-  ctx.fillStyle = "#6f86a3";
-  ctx.fillRect(30, 26, 32, 56);
+  const reflection=ctx.createLinearGradient(0,22,0,86);
+  reflection.addColorStop(0,"#8a9aa0");reflection.addColorStop(.45,"#697b80");reflection.addColorStop(1,"#25333a");
+  ctx.fillStyle = reflection;ctx.fillRect(30,26,68,56);
+  ctx.fillStyle="#b0b5b3";ctx.fillRect(62,26,2,56);ctx.fillRect(30,54,68,2);
   ctx.fillStyle = "#e9eef5";
   ctx.fillRect(18, 90, 92, 8);
   const t = new THREE.CanvasTexture(c);
