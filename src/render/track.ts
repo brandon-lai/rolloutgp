@@ -2,11 +2,12 @@
 // with a coloured top rail per lane, the start/finish line, the lane-change
 // bridge's pillars and the legs the track stands on.
 
+import { bevelBox } from "./models/parts.ts";
 import * as THREE from "three/webgpu";
 import { SAMPLE_STRIDE, TRACK_STAND, type TrackGeo } from "../sim/track/geometry.ts";
 
 export const LANE_COLORS = [0xe8402a, 0xffd23f, 0x1f9bd1];
-const RAIL_COLOR = 0x1f6fb4;
+const RAIL_COLOR = 0xa52e29;
 
 const FLOOR_THICK = 0.05;
 
@@ -64,8 +65,8 @@ export function trackObject(geo: TrackGeo): { object: THREE.Group; dispose(): vo
     mats.push(m);
     return m;
   };
-  const floorMat = mk({ color: 0x8d97a6, roughness: 0.75 });
-  const wallMat = mk({ color: 0xf5f5f2, roughness: 0.45 });
+  const floorMat = mk({ color: 0x65686a, roughness: 0.48 });
+  const wallMat = mk({ color: 0xdedcd3, roughness: 0.32 });
   const underMat = mk({ color: 0x3b4252, roughness: 0.9 });
   const floor = part(),
     walls = part(),
@@ -79,11 +80,27 @@ export function trackObject(geo: TrackGeo): { object: THREE.Group; dispose(): vo
     sweep(floor, st.data, st.count, [[hw, 0], [-hw, 0]], false);
     sweep(walls, st.data, st.count, [[-hw - t, 0], [-hw - t, top], [-hw, top], [-hw, 0]], false);
     sweep(walls, st.data, st.count, [[hw, 0], [hw, top], [hw + t, top], [hw + t, 0]], false);
-    sweep(rails, st.data, st.count, [[-hw, top], [-hw, WALL_HEIGHT], [-hw - t, WALL_HEIGHT], [-hw - t, top]], false);
-    sweep(rails, st.data, st.count, [[hw + t, top], [hw + t, WALL_HEIGHT], [hw, WALL_HEIGHT], [hw, top]], false);
+    sweep(rails, st.data, st.count, [[-hw, top], [-hw, WALL_HEIGHT-.008], [-hw-.008, WALL_HEIGHT], [-hw-t+.008,WALL_HEIGHT], [-hw - t, WALL_HEIGHT-.008], [-hw - t, top]], false);
+    sweep(rails, st.data, st.count, [[hw + t, top], [hw + t, WALL_HEIGHT-.008], [hw+t-.008,WALL_HEIGHT], [hw+.008,WALL_HEIGHT], [hw, WALL_HEIGHT-.008], [hw, top]], false);
     sweep(under, st.data, st.count, [[-hw - t, 0], [-hw - t, -FLOOR_THICK], [hw + t, -FLOOR_THICK], [hw + t, 0]], false);
   }
   g.add(mesh(floor, floorMat), mesh(walls, wallMat), mesh(under, underMat), mesh(rails, mk({ color: RAIL_COLOR, roughness: 0.4 })));
+
+  // Moulding seams follow the sampled lane frames, without changing collider data.
+  const joints: THREE.Matrix4[] = [];
+  for(const st of geo.strips) {
+    let last=-Infinity;
+    for(let k=0;k<st.count;k++) {
+      const o=k*SAMPLE_STRIDE,d=st.data;
+      if(d[o+12]-last<4.5)continue;
+      last=d[o+12];
+      const matrix=new THREE.Matrix4().makeBasis(new THREE.Vector3(d[o+3],d[o+4],d[o+5]),new THREE.Vector3(d[o+6],d[o+7],d[o+8]),new THREE.Vector3(d[o+9],d[o+10],d[o+11]));
+      matrix.setPosition(d[o]+d[o+6]*.002,d[o+1]+d[o+7]*.002,d[o+2]+d[o+8]*.002);
+      joints.push(matrix);
+    }
+  }
+  const seams=new THREE.InstancedMesh(new THREE.BoxGeometry(.008,.003,geo.lane.width),mk({color:0x333536,roughness:.8}),joints.length);
+  joints.forEach((m,i)=>seams.setMatrixAt(i,m));g.add(seams);
 
   // Start / finish: a checker band across every lane at s = 0.
   const tex = checkerTexture();
@@ -103,7 +120,7 @@ export function trackObject(geo: TrackGeo): { object: THREE.Group; dispose(): vo
   const pillarMat = mk({ color: 0xc9ced6, roughness: 0.5 });
   for (const p of geo.pillars) {
     const h = p.h + TRACK_STAND;
-    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, h, 0.08), pillarMat);
+    const pillar = new THREE.Mesh(bevelBox(0.08, h, 0.08), pillarMat);
     pillar.position.set(p.x, p.y - h / 2 - FLOOR_THICK, p.z);
     pillar.castShadow = true;
     g.add(pillar);
@@ -111,7 +128,7 @@ export function trackObject(geo: TrackGeo): { object: THREE.Group; dispose(): vo
 
   // Legs under the track every ~0.8 m along each outer lane.
   const legMat = mk({ color: 0x2b303b, roughness: 0.7, metalness: 0.2 });
-  const legGeo = new THREE.BoxGeometry(0.06, 1, 0.06);
+  const legGeo = bevelBox(0.06, 1, 0.06);
   const outer = geo.strips.length === 3 ? [0, 2] : [0];
   const legs: THREE.Matrix4[] = [];
   for (const si of outer) {

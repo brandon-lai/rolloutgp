@@ -1,81 +1,54 @@
-// The race hall: a big floor, soft daylight, a sun for shadows, and some
-// banners so the room reads as an event and not a void.
-
-import * as THREE from "three/webgpu";
-import { TRACK_STAND } from "../sim/track/geometry.ts";
-
-export function hallEnvironment(scene: THREE.Scene, bounds: { minX: number; maxX: number; minZ: number; maxZ: number }): () => void {
-  const disposables: { dispose(): void }[] = [];
-  scene.background = new THREE.Color(0xbcd7ee);
-  scene.fog = new THREE.Fog(0xbcd7ee, 120, 420);
-
-  const cx = (bounds.minX + bounds.maxX) / 2;
-  const cz = (bounds.minZ + bounds.maxZ) / 2;
-  const span = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
-
-  const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x8a7a66, 1.6);
-  scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff3dd, 2.2);
-  sun.position.set(cx + span * 0.4, 60, cz + span * 0.25);
-  sun.target.position.set(cx, 0, cz);
-  sun.castShadow = true;
-  const sc = sun.shadow.camera as THREE.OrthographicCamera;
-  sc.left = -span * 0.65;
-  sc.right = span * 0.65;
-  sc.top = span * 0.65;
-  sc.bottom = -span * 0.65;
-  sc.near = 1;
-  sc.far = 200;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.bias = -0.0004;
-  scene.add(sun, sun.target);
-
-  // Floor: a warm hall floor with a faint tile grid.
-  const tex = floorTexture();
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(40, 40);
-  const floorMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(cx, -TRACK_STAND, cz);
-  floor.receiveShadow = true;
-  scene.add(floor);
-  disposables.push(floor.geometry, floorMat, tex);
-
-  // A low barrier around the track area and a few banners.
-  const ring = Math.max(18, span * 0.62);
-  const bannerColors = [0xe8402a, 0xffd23f, 0x1f9bd1, 0xffffff];
-  const bannerGeo = new THREE.BoxGeometry(14, 3.2, 0.3);
-  const poleGeo = new THREE.BoxGeometry(0.25, 5, 0.25);
-  const poleMat = new THREE.MeshStandardMaterial({ color: 0x333944, roughness: 0.6 });
-  disposables.push(bannerGeo, poleGeo, poleMat);
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const mat = new THREE.MeshStandardMaterial({ color: bannerColors[i % bannerColors.length], roughness: 0.6 });
-    disposables.push(mat);
-    const b = new THREE.Mesh(bannerGeo, mat);
-    b.position.set(cx + Math.cos(a) * ring * 1.6, -TRACK_STAND + 4.2, cz + Math.sin(a) * ring * 1.6);
-    b.lookAt(cx, b.position.y, cz);
-    scene.add(b);
-    for (const side of [-1, 1]) {
-      const pole = new THREE.Mesh(poleGeo, poleMat);
-      pole.position.copy(b.position).add(new THREE.Vector3(Math.cos(a + Math.PI / 2) * side * 7, -1.6, Math.sin(a + Math.PI / 2) * side * 7));
-      scene.add(pole);
+// Event hall in sim units. All dressing is render-only, outside the course bounds.
+import * as THREE from 'three/webgpu';
+import { TRACK_STAND } from '../sim/track/geometry.ts';
+import { bevelBox, batch, disposeObject } from './models/parts.ts';
+import { microSurface } from './surface.ts';
+export function hallEnvironment(scene: THREE.Scene, bounds: {minX:number;maxX:number;minZ:number;maxZ:number}):()=>void {
+  const cx=(bounds.minX+bounds.maxX)/2,cz=(bounds.minZ+bounds.maxZ)/2;
+  const span=Math.max(bounds.maxX-bounds.minX,bounds.maxZ-bounds.minZ),extent=Math.max(30,span*.7);
+  scene.background=new THREE.Color(0x535758);scene.fog=new THREE.Fog(0x535758,100,340);
+  const ambient=new THREE.HemisphereLight(0xeaf0f4,0x544d42,.6);scene.add(ambient);
+  const sun=new THREE.DirectionalLight(0xfff6e9,2.8);sun.position.set(cx+span*.35,55,cz+span*.25);sun.target.position.set(cx,0,cz);
+  sun.castShadow=true;Object.assign(sun.shadow.camera,{left:-extent,right:extent,top:extent,bottom:-extent,near:.5,far:180});
+  sun.shadow.bias=-.0001;sun.shadow.normalBias=.012;scene.add(sun,sun.target);
+  const group=new THREE.Group();
+  const texture=floorTexture();texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(40,40);
+  const grain=microSurface(128,31);grain.normal.repeat.set(180,180);grain.roughness.repeat.set(180,180);
+  const floorMaterial=new THREE.MeshStandardMaterial({map:texture,color:0xb8b5aa,roughness:.68,roughnessMap:grain.roughness,normalMap:grain.normal,normalScale:new THREE.Vector2(.18,.18)});
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(800,800),floorMaterial);floor.rotation.x=-Math.PI/2;floor.position.set(cx,-TRACK_STAND,cz);group.add(floor);
+  const metal=new THREE.MeshStandardMaterial({color:0x44494b,metalness:.7,roughness:.4});
+  const wall=new THREE.MeshStandardMaterial({color:0x999b96,roughness:.85});
+  const light=new THREE.MeshStandardMaterial({color:0xfff4d9,emissive:0xfff4d9,emissiveIntensity:3,roughness:.5});
+  const box=(x:number,y:number,z:number,px:number,py:number,pz:number,m:THREE.Material)=>{const mesh=new THREE.Mesh(bevelBox(x,y,z),m);mesh.position.set(px,py,pz);group.add(mesh);};
+  // Perimeter walls and structural roof beams establish a real room at TV height.
+  for(const side of [-1,1])box(extent*3,55,.6,cx,26,cz+side*extent*1.5,wall);
+  for(let i=-2;i<=2;i++) {
+    box(extent*3,.8,.6,cx,46,cz+i*extent*.6,metal);
+    for(const side of [-1,1]) {
+      box(18,.12,3,cx+side*extent*.6,45,cz+i*extent*.6,light);
+      box(.6,47,.6,cx+side*extent*1.45,22.5,cz+i*extent*.6,metal);
     }
   }
-  return () => disposables.forEach((d) => d.dispose());
+  // Low crowd rails and original event graphics, well clear of all lanes.
+  const banner=new THREE.CanvasTexture(bannerCanvas());banner.colorSpace=THREE.SRGBColorSpace;
+  const fabric=new THREE.MeshStandardMaterial({map:banner,roughness:.9});
+  for(const side of [-1,1])for(let i=-2;i<=2;i++) {
+    const x=cx+i*extent*.48,z=cz+side*extent;
+    box(extent*.46,.12,.12,x,3.5,z,metal);box(extent*.46,.12,.12,x,1,z,metal);
+    for(const dx of [-.22,.22])box(.16,4.5,.16,x+dx*extent,1.25,z,metal);
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(extent*.42,2),fabric);sign.position.set(x,2.3,z-side*.12);if(side>0)sign.rotation.y=Math.PI;group.add(sign);
+  }
+  const merged=batch(group);scene.add(merged);
+  return()=>{disposeObject(merged);sun.shadow.dispose();};
 }
-
-function floorTexture(): THREE.CanvasTexture {
-  const c = document.createElement("canvas");
-  c.width = c.height = 64;
-  const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#c9b99f";
-  ctx.fillRect(0, 0, 64, 64);
-  ctx.strokeStyle = "rgba(90,70,50,0.18)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(1, 1, 62, 62);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+function floorTexture() {
+  const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d')!;
+  ctx.fillStyle='#c4c2b9';ctx.fillRect(0,0,128,128);ctx.strokeStyle='#a3a39e';ctx.lineWidth=.7;ctx.strokeRect(0,0,128,128);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function bannerCanvas() {
+  const c=document.createElement('canvas');c.width=1024;c.height=128;const ctx=c.getContext('2d')!;
+  ctx.fillStyle='#22272a';ctx.fillRect(0,0,1024,128);ctx.fillStyle='#bc302a';ctx.fillRect(0,0,12,128);
+  ctx.fillStyle='#f3f0e8';ctx.font='700 48px sans-serif';ctx.fillText('ROLLOUT GP',45,66);
+  ctx.fillStyle='#dfba55';ctx.font='20px sans-serif';ctx.fillText('BUILD  /  RELEASE  /  REPEAT',45,103);return c;
 }
