@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Portable launch-pass command. Uses the installed Codex CLI and its normal policy."""
+import argparse
+import pathlib
+import shutil
+import subprocess
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Refine an existing project with Codex. No account or API key is configured by this command.')
+    parser.add_argument('project', nargs='?', default='.', help='Existing project directory (default: current directory)')
+    parser.add_argument('--focus', default='', help='Additional scope or art-direction constraints')
+    parser.add_argument('--ship', action='store_true', help='Authorize the project’s existing preview/merge/deploy workflow after verification')
+    parser.add_argument('--print', action='store_true', dest='print_prompt', help='Print the complete task without running Codex')
+    args = parser.parse_args()
+    project = pathlib.Path(args.project).expanduser().resolve()
+    if not project.is_dir():
+        parser.error('Project directory does not exist; refine works on existing projects.')
+    skill = pathlib.Path(__file__).resolve().parent / '.agents/skills/refine/SKILL.md'
+    prompt = skill.read_text()
+    prompt += '\n\nTarget project: ' + str(project) + '\n'
+    prompt += ('Shipping is authorized through this project’s existing deployment workflow after preview verification.\n'
+               if args.ship else 'This invocation authorizes local changes and commits. Leave the result on a reviewable branch; pushing, merging and external deployment are outside this invocation.\n')
+    prompt += 'Do not spend money, create service accounts, accept new service terms, or delete/pause external resources without explicit authorization.\n'
+    if args.focus:
+        prompt += '\nAdditional user scope:\n' + args.focus + '\n'
+    if args.print_prompt:
+        print(prompt)
+        return 0
+    codex = shutil.which('codex')
+    if not codex:
+        parser.error('Codex CLI is not available on PATH. Use --print to copy the task into your coding agent.')
+    return subprocess.run([codex, 'exec', '--cd', str(project), '--sandbox', 'workspace-write', '--skip-git-repo-check', '-'], input=prompt, text=True).returncode
+
+
+if __name__ == '__main__':
+    sys.exit(main())

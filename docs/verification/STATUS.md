@@ -27,3 +27,30 @@ Car stage: 37 tests and build pass. New tests check every tire/roller at all tie
 Track/hall stage: 37 tests and build pass. Renderer-only joints follow the original lane samples; bevels stay on the wall tops. Event hall uses merged props and a shared material per surface. Race view chunk 9.77 kB (4.05 gzip); worker unchanged. Pixel and runtime budgets still unverified.
 
 City stage: 37 tests and build pass. City chunk 47.98 kB (17.93 gzip), loaded only on entering the city. Facade detail has a 65 m LOD cutoff; high/ultra use the r186 CSMShadowNode. Original runner is a skinned parametric mesh with joint animation and first-person arms, not the requested Blender-sculpted character; that asset-quality work remains unfinished. No changes in src/city or src/sim. Pixel review remains blocked.
+
+## Final local candidate
+
+40 tests pass across five files; `npm run build` passes without warnings. This includes frozen current-format profile/share compatibility, malformed progress recovery, backup parsing, catalog dimensions at all tiers, real shell openings, the open market pit, and failed-worker recovery. `npm install --offline --ignore-scripts` succeeds. No online dependency audit is claimed.
+
+The UI stage adds graphite panels, tabular numbers, keyboard controls/focus trapping, reduced-motion handling, responsive placement and canvas input between panels. Final review also corrected clear-body materials, ghost material ownership, repeated hub geometry, tiered relief resolution, and autosave races during restore/delete. Render-frame errors expose recovery. These are implementation checks; no new screen has been visually approved.
+
+Measured build sizes (decimal kB; Vite gzip estimates):
+
+| File | Raw | Gzip |
+| --- | ---: | ---: |
+| Entry JS | 940.90 | 270.66 |
+| Shared geometry/render chunk | 267.24 | 70.92 |
+| Shared UI | 48.12 | 17.70 |
+| CSS | 17.88 | 4.66 |
+| Lazy city screen | 48.45 | 18.09 |
+| Optional workshop loader/decoder | 70.91 | 20.65 |
+| Workshop GLB | 93.92 | 23.01 |
+| Unchanged physics worker | 4,425.38 | deferred until simulation |
+
+Summing actual HTML references (entry, modulepreloads and CSS) with Node's default gzip gives approximately **372.2 kB**. The optional workshop loader/model adds approximately **43.7 kB** and can load after the home turntable appears. Both fit the 450 kB home budget. Compression settings on Vercel may differ. The GLB parses with GLTFLoader + MeshoptDecoder: five meshes, 4,360 triangles. `models:bake` regenerates identical bytes. No new textures are downloaded. Per-tier source geometry counts and target ceilings are in README; runtime frame time/draw calls/triangles are unmeasured for every tier.
+
+All required tuning harnesses completed with exit code 0 using `node --import tsx scripts/<name>.ts` (tsx CLI IPC is blocked here). See `tuning/`: sweeps for practice/sunday/dragon/bank/grand, rivals, citysim, endurance and damage. All rival builds remain legal. Some Grand rivals course out; stock dock exceeds the harness's 400-second limit. These are recorded outcomes, not newly tuned behavior. Endurance lap-12 pit is 81.7 s versus 85.7 s without a pit. Only worker transport in `src/sim/client.ts` changed; worker bytecode still hashes to `DwMzx2No`. `src/city` and the rest of `src/sim` are unchanged from a2d8cdf.
+
+Production JS was checked for `__dev`, `__rollout`, `__workerError` and `dataset.metrics`; none are present. Full diff review and `git diff --check` completed. The generic refine skill validates, and a stub-CLI smoke test checks its project-path and prompt forwarding without launching another agent.
+
+Shipping remains blocked: no before/after screenshots, preview, merge, production revision check or actual browser render has been completed. The branch must not be called production-ready or visually hyper-realistic yet. In addition to the render matrix, finish the sculpted runner/Blender bake and tire-lettering/motor-label artwork. Real GPU/WebGPU, real-device fps, gamepad, touch, audio and motion comfort require separate playtests. GitHub authentication/network and local browser/server restrictions must be resolved before preview verification and deployment.
