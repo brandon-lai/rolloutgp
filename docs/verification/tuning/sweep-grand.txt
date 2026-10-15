@@ -1,0 +1,20 @@
+stock              9.9km/h   31.60s air0.00                     31.62s air0.00                     31.61s air0.00                    
+torque 5:1         12.8km/h  24.52s air0.11                     24.51s air0.11                     24.51s air0.11                    
+torque 4:1         15.9km/h  20.47s air0.16                     20.46s air0.16                     20.46s air0.16                    
+rev 5:1            14.9km/h  21.73s air0.14                     21.75s air0.14                     21.74s air0.14                    
+rev 3.5:1          20.8km/h  OUT rolled over @Big climb L2      17.59s air0.23                     17.54s air0.23                    
+turbo 4:1          21.8km/h  OUT rolled over @Straight L2       16.37s air0.23                     OUT stuck @Straight L3            
+turbo 4:1 +brake   21.8km/h  16.63s air0.23                     16.85s air0.23                     16.52s air0.23                    
+turbo 4:1 +damp    21.8km/h  OUT rolled over @Big climb L2      16.36s air0.22                     16.32s air0.23                    
+turbo 4:1 hard     20.4km/h  17.23s air0.23                     OUT stuck @Straight L1             17.17s air0.23                    
+turbo 4:1 arched   22km/h    OUT stuck @Turn 2 L2               16.51s air0.23                     OUT flew off @Big climb L3        
+turbo 4:1 soft24   20.2km/h  17.27s air0.23                     OUT rolled over @Straight L1       17.51s air0.23                    
+turbo 4:1 bb13     21.8km/h  15.94s air0.24                     OUT stuck @Straight L2             15.73s air0.24                    
+turbo bb13 brass   24km/h    OUT flew off @Turn 2 L3            OUT stuck @Straight L1             OUT flew off @Straight L2         
+turbo bb13 lbrake2 21.8km/h  16.07s air0.23                     15.85s air0.24                     16.78s air0.24                    
+turbo bb13 narrow  21.8km/h  OUT flew off @The Bank L2          15.92s air0.23                     16.08s air0.28                    
+turbo 4:1 wide19   21.8km/h  15.69s air0.23                     15.71s air0.23                     15.68s air0.23                    
+sprint 3.5:1       29.5km/h  OUT flew off @Straight L2          OUT stuck @Straight L1             OUT flew off @The Bank L3         
+sprint 3.5 +brake  29.5km/h  OUT flew off @Straight L2          OUT flew off @Turn 2 L2            OUT flew off @The Bank L1         
+sprint 3.5 +br+da  29.5km/h  OUT stuck @Straight L1             15.05s air0.26                     OUT rolled over @The Bank L3      
+sprint 3.5 full    31.4km/h  OUT flew off @Straight L1          OUT flew off @Lane change L2       OUT flew off @Turn 2 L2           

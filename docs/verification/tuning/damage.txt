@@ -1,0 +1,12 @@
+sprint               sunday  no damage 8.713 maxImpact 42
+sprint               dragon  no damage 11.038 maxImpact 46
+sprint               grand   cracked body OUT maxImpact 173
+sprint clear holed   sunday  cracked body OUT maxImpact 120
+sprint clear holed   dragon  cracked body, bent front left stay OUT maxImpact 309
+sprint clear holed   grand   cracked body, bent front right stay, bent rear left stay OUT maxImpact 498
+turbo                sunday  no damage 10.16 maxImpact 30
+turbo                dragon  no damage 12.913 maxImpact 39
+turbo                grand   no damage 16.669 maxImpact 59
+stock                sunday  no damage 19.908 maxImpact 6
+stock                dragon  no damage 25.258 maxImpact 7
+stock                grand   no damage 31.61 maxImpact 7

@@ -40,16 +40,24 @@ class SimClient {
       this.worker.onmessage = (ev: MessageEvent<FromWorker>) => this.onMessage(ev.data);
       this.worker.onerror = (ev) => {
         console.error("worker error", ev);
-        (globalThis as { __workerError?: string }).__workerError = ev.message || "worker failed to load";
-        for (const [, w] of this.waiting) w.reject(new Error(ev.message || "Simulation worker failed"));
-        this.waiting.clear();
+        if (import.meta.env.DEV) (globalThis as { __workerError?: string }).__workerError = ev.message || "worker failed to load";
+        this.fail(new Error(ev.message || "Simulation worker failed"));
       };
+      this.worker.onmessageerror = () => this.fail(new Error("Could not read the simulation worker response"));
     }
     return this.worker;
   }
 
   private send(m: ToWorker) {
-    this.w.postMessage(m);
+    try { this.w.postMessage(m); }
+    catch (error) { this.fail(error instanceof Error ? error : new Error(String(error))); }
+  }
+
+  /** Transport recovery only: never changes the simulator or its inputs. */
+  private fail(error: Error) {
+    for (const pending of [...this.waiting.values(), ...this.cityWaiting.values()]) pending.reject(error);
+    this.waiting.clear(); this.cityWaiting.clear(); this.frames.clear(); this.cityFrames.clear();
+    this.worker?.terminate(); this.worker = null;
   }
 
   private onMessage(m: FromWorker) {
@@ -63,6 +71,7 @@ class SimClient {
     if (m.type === "error" && this.cityWaiting.has(m.id)) {
       this.cityWaiting.get(m.id)!.reject(new Error(m.message));
       this.cityWaiting.delete(m.id);
+      this.cityFrames.delete(m.id);
       return;
     }
     if (m.type === "frame") this.frames.get(m.id)?.(m.t, m.cars, m.events);

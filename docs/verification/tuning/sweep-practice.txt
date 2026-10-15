@@ -1,0 +1,20 @@
+stock              9.9km/h   10.04s air0.07                    
+torque 5:1         12.8km/h  7.87s air0.16                     
+torque 4:1         15.9km/h  6.77s air0.22                     
+rev 5:1            14.9km/h  7.17s air0.20                     
+rev 3.5:1          20.8km/h  6.14s air0.24                     
+turbo 4:1          21.8km/h  5.56s air0.27                     
+turbo 4:1 +brake   21.8km/h  5.65s air0.27                     
+turbo 4:1 +damp    21.8km/h  5.60s air0.27                     
+turbo 4:1 hard     20.4km/h  5.81s air0.26                     
+turbo 4:1 arched   22km/h    OUT flew off @Turn 2 L1           
+turbo 4:1 soft24   20.2km/h  6.14s air0.26                     
+turbo 4:1 bb13     21.8km/h  5.37s air0.27                     
+turbo bb13 brass   24km/h    OUT flew off @Turn 2 L3           
+turbo bb13 lbrake2 21.8km/h  5.30s air0.28                     
+turbo bb13 narrow  21.8km/h  5.32s air0.27                     
+turbo 4:1 wide19   21.8km/h  5.28s air0.27                     
+sprint 3.5:1       29.5km/h  OUT flew off @Turn 2 L1           
+sprint 3.5 +brake  29.5km/h  OUT flew off @Turn 2 L2           
+sprint 3.5 +br+da  29.5km/h  5.26s air0.27                     
+sprint 3.5 full    31.4km/h  OUT flew off @Turn 2 L1           

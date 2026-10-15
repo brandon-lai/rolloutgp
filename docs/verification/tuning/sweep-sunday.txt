@@ -1,0 +1,20 @@
+stock              9.9km/h   19.92s air0.00                     19.91s air0.00                     19.92s air0.00                    
+torque 5:1         12.8km/h  15.44s air0.04                     15.44s air0.04                     15.44s air0.04                    
+torque 4:1         15.9km/h  12.88s air0.07                     12.87s air0.07                     12.86s air0.07                    
+rev 5:1            14.9km/h  13.68s air0.06                     13.68s air0.06                     13.66s air0.06                    
+rev 3.5:1          20.8km/h  10.97s air0.12                     10.97s air0.12                     10.92s air0.09                    
+turbo 4:1          21.8km/h  10.14s air0.14                     10.15s air0.15                     10.09s air0.13                    
+turbo 4:1 +brake   21.8km/h  10.18s air0.14                     10.20s air0.14                     10.14s air0.13                    
+turbo 4:1 +damp    21.8km/h  10.22s air0.14                     10.21s air0.15                     10.16s air0.13                    
+turbo 4:1 hard     20.4km/h  10.59s air0.13                     10.61s air0.13                     10.58s air0.12                    
+turbo 4:1 arched   22km/h    10.11s air0.15                     10.13s air0.15                     10.09s air0.13                    
+turbo 4:1 soft24   20.2km/h  10.66s air0.13                     10.67s air0.13                     10.62s air0.12                    
+turbo 4:1 bb13     21.8km/h  9.80s air0.17                      9.79s air0.16                      9.75s air0.14                     
+turbo bb13 brass   24km/h    9.08s air0.18                      9.07s air0.18                      9.91s air0.34                     
+turbo bb13 lbrake2 21.8km/h  9.80s air0.16                      10.32s air0.16                     9.74s air0.14                     
+turbo bb13 narrow  21.8km/h  9.79s air0.17                      9.79s air0.17                      9.73s air0.14                     
+turbo 4:1 wide19   21.8km/h  9.76s air0.17                      9.77s air0.17                      9.73s air0.14                     
+sprint 3.5:1       29.5km/h  8.68s air0.19                      8.73s air0.19                      8.64s air0.14                     
+sprint 3.5 +brake  29.5km/h  8.75s air0.18                      8.83s air0.18                      8.78s air0.16                     
+sprint 3.5 +br+da  29.5km/h  9.07s air0.17                      9.01s air0.14                      9.04s air0.14                     
+sprint 3.5 full    31.4km/h  OUT flew off @Straight L2          OUT flew off @Straight L2          OUT flew off @Straight L2         

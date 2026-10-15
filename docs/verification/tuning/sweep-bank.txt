@@ -1,0 +1,20 @@
+stock              9.9km/h   19.08s air0.00                     19.09s air0.00                     19.08s air0.00                    
+torque 5:1         12.8km/h  14.82s air0.11                     14.82s air0.12                     14.82s air0.11                    
+torque 4:1         15.9km/h  12.40s air0.17                     12.39s air0.18                     12.40s air0.18                    
+rev 5:1            14.9km/h  13.17s air0.15                     13.18s air0.15                     13.17s air0.15                    
+rev 3.5:1          20.8km/h  10.87s air0.22                     10.84s air0.22                     10.79s air0.22                    
+turbo 4:1          21.8km/h  10.08s air0.23                     10.07s air0.23                     10.04s air0.23                    
+turbo 4:1 +brake   21.8km/h  10.28s air0.22                     OUT flew off @Turn 1 L1            10.24s air0.22                    
+turbo 4:1 +damp    21.8km/h  10.10s air0.21                     10.09s air0.23                     10.04s air0.23                    
+turbo 4:1 hard     20.4km/h  10.60s air0.21                     10.60s air0.22                     10.56s air0.21                    
+turbo 4:1 arched   22km/h    10.07s air0.23                     10.05s air0.23                     10.04s air0.23                    
+turbo 4:1 soft24   20.2km/h  10.67s air0.21                     10.65s air0.21                     10.62s air0.21                    
+turbo 4:1 bb13     21.8km/h  9.79s air0.23                      9.78s air0.23                      9.73s air0.21                     
+turbo bb13 brass   24km/h    9.15s air0.24                      9.13s air0.23                      9.12s air0.23                     
+turbo bb13 lbrake2 21.8km/h  9.80s air0.23                      9.82s air0.21                      9.74s air0.21                     
+turbo bb13 narrow  21.8km/h  9.78s air0.23                      9.77s air0.23                      9.74s air0.23                     
+turbo 4:1 wide19   21.8km/h  9.82s air0.21                      9.80s air0.21                      9.73s air0.21                     
+sprint 3.5:1       29.5km/h  OUT flew off @Straight L2          8.87s air0.25                      8.79s air0.25                     
+sprint 3.5 +brake  29.5km/h  9.21s air0.23                      9.22s air0.23                      9.08s air0.23                     
+sprint 3.5 +br+da  29.5km/h  9.75s air0.21                      9.73s air0.21                      9.64s air0.21                     
+sprint 3.5 full    31.4km/h  OUT flew off @The Bank L2          OUT flew off @Lane change L2       OUT flew off @Straight L3         

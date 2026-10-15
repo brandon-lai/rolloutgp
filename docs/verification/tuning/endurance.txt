@@ -1,0 +1,4 @@
+pit lap never You:85.7  Taku:97.6(pit 70)  Mr. Oda:124.1(pit 101) | my volts every 10s: 2.73 2.69 2.66 2.62 2.58 2.09 2.00 2.00 2.00 2.00 2.00 2.00
+pit lap 8 You:82.9(pit 26)  Taku:97.6(pit 70)  Mr. Oda:124.1(pit 101) | my volts every 10s: 2.73 2.69 2.67 2.74 2.69 2.65 2.62 2.57 2.41 2.41 2.41 2.41
+pit lap 12 You:81.7(pit 39)  Taku:97.6(pit 70)  Mr. Oda:124.1(pit 101) | my volts every 10s: 2.73 2.69 2.66 2.62 2.75 2.71 2.67 2.64 2.63 2.63 2.63 2.63
+pit lap 16 You:82.0(pit 52)  Taku:97.6(pit 70)  Mr. Oda:124.1(pit 101) | my volts every 10s: 2.73 2.69 2.66 2.62 2.58 2.76 2.72 2.68 2.68 2.68 2.68 2.68

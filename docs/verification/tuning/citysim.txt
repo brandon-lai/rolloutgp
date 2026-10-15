@@ -1,0 +1,15 @@
+downtown  stock     fork0 fin 246.3s outs 0 top 11.5 laps 82.1,82.0,82.1 jumps 0.32,0.33,0.33 5.9s cpu
+downtown  stock     fork1 fin 372.1s outs 0 top 10.0 laps 123.9,124.1,124.2 jumps  8.1s cpu
+downtown  turbo4    fork0 fin 112.2s outs 0 top 21.9 laps 37.7,37.2,37.3 jumps 0.39,0.38,0.38 2.5s cpu
+downtown  turbo4    fork1 fin 168.7s outs 0 top 21.9 laps 56.5,56.1,56.1 jumps  3.8s cpu
+downtown  sprint35  fork0 fin 108.7s outs 3 top 29.6 laps 31.7,31.0,31.0 jumps 0.30,0.30,0.32 2.1s cpu
+downtown  sprint35  fork1 fin 126.0s outs 0 top 29.6 laps 42.4,41.7,41.8 jumps  2.6s cpu
+market    stock     fork0 fin 194.5s outs 1 top 15.2 laps 61.4,61.2,66.9 jumps 0.17,0.15,0.16,0.16,0.16,0.17,0.15,0.15,0.18,0.17 4.8s cpu
+market    stock     fork1 fin 245.3s outs 0 top 10.0 laps 81.8,81.7,81.8 jumps  5.8s cpu
+market    turbo4    fork0 fin 83.5s outs 0 top 24.7 laps 28.1,27.7,27.6 jumps 0.35,0.35,0.35 2.0s cpu
+market    turbo4    fork1 fin 111.3s outs 0 top 21.9 laps 37.4,37.0,37.0 jumps  2.6s cpu
+market    sprint35  fork0 fin 63.1s outs 0 top 31.3 laps 21.5,20.8,20.8 jumps 0.35,0.35,0.35 1.5s cpu
+market    sprint35  fork1 fin 83.5s outs 0 top 29.6 laps 28.3,27.6,27.6 jumps  1.8s cpu
+dock      stock     fork0 NOT FINISHED t=400 outs 0 top 12.3 laps 249.9 jumps 0.36 8.5s cpu
+dock      turbo4    fork0 fin 243.6s outs 2 top 21.9 laps 116.9,116.7 jumps 0.33,0.33 5.1s cpu
+dock      sprint35  fork0 fin 186.1s outs 2 top 29.6 laps 88.2,87.9 jumps 0.33,0.33 3.7s cpu
