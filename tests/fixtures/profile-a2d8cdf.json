@@ -1,0 +1,345 @@
+{
+  "v": 1,
+  "owner": "legacy-a2d8cdf",
+  "tokens": 1234,
+  "owned": [
+    "ch-s2",
+    "mo-stock",
+    "ge-5",
+    "ti-std",
+    "ro-9p",
+    "st-f-stock",
+    "st-r-stock",
+    "be-plastic"
+  ],
+  "bodies": [
+    "sunrise"
+  ],
+  "builds": [
+    {
+      "v": 1,
+      "name": "Kit car",
+      "chassis": "ch-s2",
+      "motor": "mo-stock",
+      "gear": "ge-5",
+      "tires": "ti-std",
+      "rollers": {
+        "roller": "ro-9p",
+        "front": "st-f-stock",
+        "rear": "st-r-stock",
+        "side": null
+      },
+      "dampers": {
+        "part": null,
+        "mount": "rear"
+      },
+      "brakes": {
+        "part": null,
+        "position": "rear",
+        "gap": 2
+      },
+      "bearings": "be-plastic",
+      "body": {
+        "v": 1,
+        "name": "Sunrise",
+        "base": "sunrise",
+        "clear": false,
+        "holes": 0,
+        "sections": [
+          {
+            "x": 76,
+            "w": 34,
+            "top": 14,
+            "sq": 0.3
+          },
+          {
+            "x": 50,
+            "w": 42,
+            "top": 22,
+            "sq": 0.45
+          },
+          {
+            "x": 15,
+            "w": 44,
+            "top": 32,
+            "sq": 0.5
+          },
+          {
+            "x": -20,
+            "w": 44,
+            "top": 36,
+            "sq": 0.55
+          },
+          {
+            "x": -50,
+            "w": 43,
+            "top": 33,
+            "sq": 0.6
+          },
+          {
+            "x": -74,
+            "w": 40,
+            "top": 28,
+            "sq": 0.7
+          }
+        ],
+        "addons": [
+          {
+            "kind": "wing",
+            "x": -66,
+            "size": 0.35
+          }
+        ],
+        "paint": {
+          "base": "#e8402a",
+          "base2": "#ffd23f",
+          "gradient": "nose-tail",
+          "finish": "gloss",
+          "decals": [
+            {
+              "sticker": "stripe-double",
+              "u": 0.42,
+              "v": 0,
+              "size": 0.5,
+              "rot": 0,
+              "color": "#ffffff",
+              "mirror": false
+            },
+            {
+              "sticker": "num-7",
+              "u": 0.55,
+              "v": 0.75,
+              "size": 0.16,
+              "rot": 0,
+              "color": "#ffffff",
+              "mirror": true
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "active": 0,
+  "designs": [
+    {
+      "v": 1,
+      "name": "Sunrise",
+      "base": "sunrise",
+      "clear": false,
+      "holes": 0,
+      "sections": [
+        {
+          "x": 76,
+          "w": 34,
+          "top": 14,
+          "sq": 0.3
+        },
+        {
+          "x": 50,
+          "w": 42,
+          "top": 22,
+          "sq": 0.45
+        },
+        {
+          "x": 15,
+          "w": 44,
+          "top": 32,
+          "sq": 0.5
+        },
+        {
+          "x": -20,
+          "w": 44,
+          "top": 36,
+          "sq": 0.55
+        },
+        {
+          "x": -50,
+          "w": 43,
+          "top": 33,
+          "sq": 0.6
+        },
+        {
+          "x": -74,
+          "w": 40,
+          "top": 28,
+          "sq": 0.7
+        }
+      ],
+      "addons": [
+        {
+          "kind": "wing",
+          "x": -66,
+          "size": 0.35
+        }
+      ],
+      "paint": {
+        "base": "#e8402a",
+        "base2": "#ffd23f",
+        "gradient": "nose-tail",
+        "finish": "gloss",
+        "decals": [
+          {
+            "sticker": "stripe-double",
+            "u": 0.42,
+            "v": 0,
+            "size": 0.5,
+            "rot": 0,
+            "color": "#ffffff",
+            "mirror": false
+          },
+          {
+            "sticker": "num-7",
+            "u": 0.55,
+            "v": 0.75,
+            "size": 0.16,
+            "rot": 0,
+            "color": "#ffffff",
+            "mirror": true
+          },
+          {
+            "sticker": "upload:legacy-image",
+            "u": 0.5,
+            "v": 0.5,
+            "size": 0.2,
+            "rot": 0,
+            "color": "#ffffff",
+            "mirror": false
+          }
+        ]
+      }
+    }
+  ],
+  "ghosts": {
+    "sunday": {
+      "time": 14.2,
+      "build": {
+        "v": 1,
+        "name": "Kit car",
+        "chassis": "ch-s2",
+        "motor": "mo-stock",
+        "gear": "ge-5",
+        "tires": "ti-std",
+        "rollers": {
+          "roller": "ro-9p",
+          "front": "st-f-stock",
+          "rear": "st-r-stock",
+          "side": null
+        },
+        "dampers": {
+          "part": null,
+          "mount": "rear"
+        },
+        "brakes": {
+          "part": null,
+          "position": "rear",
+          "gap": 2
+        },
+        "bearings": "be-plastic",
+        "body": {
+          "v": 1,
+          "name": "Sunrise",
+          "base": "sunrise",
+          "clear": false,
+          "holes": 0,
+          "sections": [
+            {
+              "x": 76,
+              "w": 34,
+              "top": 14,
+              "sq": 0.3
+            },
+            {
+              "x": 50,
+              "w": 42,
+              "top": 22,
+              "sq": 0.45
+            },
+            {
+              "x": 15,
+              "w": 44,
+              "top": 32,
+              "sq": 0.5
+            },
+            {
+              "x": -20,
+              "w": 44,
+              "top": 36,
+              "sq": 0.55
+            },
+            {
+              "x": -50,
+              "w": 43,
+              "top": 33,
+              "sq": 0.6
+            },
+            {
+              "x": -74,
+              "w": 40,
+              "top": 28,
+              "sq": 0.7
+            }
+          ],
+          "addons": [
+            {
+              "kind": "wing",
+              "x": -66,
+              "size": 0.35
+            }
+          ],
+          "paint": {
+            "base": "#e8402a",
+            "base2": "#ffd23f",
+            "gradient": "nose-tail",
+            "finish": "gloss",
+            "decals": [
+              {
+                "sticker": "stripe-double",
+                "u": 0.42,
+                "v": 0,
+                "size": 0.5,
+                "rot": 0,
+                "color": "#ffffff",
+                "mirror": false
+              },
+              {
+                "sticker": "num-7",
+                "u": 0.55,
+                "v": 0.75,
+                "size": 0.16,
+                "rot": 0,
+                "color": "#ffffff",
+                "mirror": true
+              }
+            ]
+          }
+        }
+      },
+      "seed": 42,
+      "lane": 1,
+      "at": "2026-10-14T00:00:00.000Z"
+    }
+  },
+  "medals": {
+    "sunday": 1
+  },
+  "cups": [],
+  "city": {},
+  "stats": {
+    "races": 0,
+    "wins": 0,
+    "courseOuts": 0,
+    "cityRuns": 0
+  },
+  "settings": {
+    "fov": 75,
+    "headBob": true,
+    "vignette": true,
+    "cityView": "first",
+    "cheer": true,
+    "volume": 0.7,
+    "quality": "high",
+    "regulation": true,
+    "mouseSensitivity": 1
+  },
+  "seenIntro": true
+}

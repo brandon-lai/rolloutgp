@@ -34,7 +34,7 @@ export interface ResultsData {
 
 export type Screen =
   | { name: "home" }
-  | { name: "garage"; tab?: string }
+  | { name: "garage"; tab?: string; returnTo?: ResultsData }
   | { name: "tracks"; format?: Format }
   | { name: "race"; setup: RaceSetup }
   | { name: "results"; data: ResultsData }

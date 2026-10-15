@@ -36,7 +36,8 @@ async function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObje
     try {
       const t = db.transaction(store, mode);
       const r = fn(t.objectStore(store));
-      r.onsuccess = () => resolve(r.result);
+      t.oncomplete = () => resolve(r.result);
+      t.onabort = t.onerror = () => resolve(undefined);
       r.onerror = () => resolve(undefined);
     } catch {
       resolve(undefined);
@@ -45,6 +46,11 @@ async function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObje
 }
 
 export async function getItem<T>(key: string): Promise<T | undefined> {
+  if (memory.has(key)) return memory.get(key) as T;
+  try {
+    const fallback = localStorage.getItem(`${DB_NAME}:${key}`);
+    if (fallback) return JSON.parse(fallback) as T;
+  } catch { /* blocked storage */ }
   const v = await tx<T>("kv", "readonly", (s) => s.get(key) as IDBRequest<T>);
   if (v !== undefined) return v;
   try {
@@ -60,10 +66,15 @@ export async function setItem<T>(key: string, value: T): Promise<boolean> {
   const db = await open();
   if (db) {
     const ok = await tx("kv", "readwrite", (s) => s.put(value, key));
-    if (ok !== undefined) return true;
+    if (ok !== undefined) {
+      memory.delete(key);
+      try { localStorage.removeItem(`${DB_NAME}:${key}`); } catch { /* unavailable */ }
+      return true;
+    }
   }
   try {
     localStorage.setItem(`${DB_NAME}:${key}`, JSON.stringify(value));
+    memory.delete(key);
     return true;
   } catch {
     memory.set(key, value);
@@ -85,15 +96,32 @@ export async function getUpload(id: string): Promise<Blob | undefined> {
   return v ?? (memory.get(`upload:${id}`) as Blob | undefined);
 }
 
+/** Clear both stores in one committed transaction, or report failure. */
 export async function clearAll(): Promise<void> {
   const db = await open();
-  if (db) {
-    for (const s of STORES) await tx(s, "readwrite", (st) => st.clear());
-  }
+  if (db) await new Promise<void>((resolve, reject) => {
+    const t = db.transaction([...STORES], 'readwrite');
+    for (const s of STORES) t.objectStore(s).clear();
+    t.oncomplete = () => resolve();
+    t.onabort = t.onerror = () => reject(new Error('Could not delete data. Your save has been kept.'));
+  });
   try {
     for (const k of Object.keys(localStorage)) if (k.startsWith(`${DB_NAME}:`)) localStorage.removeItem(k);
-  } catch {
-    /* ignore */
-  }
+  } catch { /* unavailable */ }
   memory.clear();
+}
+
+/** Restore profile and stickers atomically. Never erase the existing save first. */
+export async function restoreData(profile: unknown, uploads: Map<string, Blob>): Promise<void> {
+  const db = await open();
+  if (!db) throw new Error('Restoring a backup needs browser storage. Enable it and try again.');
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction([...STORES], 'readwrite');
+    t.objectStore('kv').put(profile, 'profile');
+    for (const [id, blob] of uploads) t.objectStore('uploads').put(blob, id);
+    t.oncomplete = () => resolve();
+    t.onabort = t.onerror = () => reject(new Error('Restore failed. The previous save is unchanged.'));
+  });
+  memory.delete('profile');
+  try { localStorage.removeItem(`${DB_NAME}:profile`); } catch { /* unavailable */ }
 }

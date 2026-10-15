@@ -40,7 +40,7 @@ export function App() {
       const ids = new Set<string>();
       for (const b of p.builds) for (const d of b.body.paint.decals) if (d.sticker.startsWith("upload:")) ids.add(d.sticker.slice(7));
       for (const r of p.designs) for (const d of r.paint.decals) if (d.sticker.startsWith("upload:")) ids.add(d.sticker.slice(7));
-      Promise.all(
+      Promise.allSettled(
         [...ids].map(async (id) => {
           const blob = await getUpload(id);
           if (blob) uploads.current.set(id, await createImageBitmap(blob));
@@ -62,7 +62,7 @@ export function App() {
         if (cancelled) return v.dispose();
         vp = v;
         setViewport(v);
-        (window as unknown as { __rollout?: unknown }).__rollout = { backend: v.backend };
+        if (import.meta.env.DEV) (window as unknown as { __rollout?: unknown }).__rollout = { backend: v.backend };
       })
       .catch((e) => setGlError(String(e?.message ?? e)));
     return () => {
@@ -82,7 +82,7 @@ export function App() {
       latest.current = next;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
-        if (latest.current) setItem(PROFILE_KEY, latest.current);
+        if (latest.current) void setItem(PROFILE_KEY, latest.current).then(ok => { if (!ok) setToastMsg("Browser storage is unavailable. Download a save before closing this tab."); });
       }, 250);
       return next;
     });
@@ -91,7 +91,7 @@ export function App() {
   // Flush on tab hide.
   useEffect(() => {
     const flush = () => {
-      if (latest.current) setItem(PROFILE_KEY, latest.current);
+      if (latest.current) void setItem(PROFILE_KEY, latest.current).then(ok => { if (!ok) setToastMsg("Browser storage is unavailable. Download a save before closing this tab."); });
     };
     document.addEventListener("visibilitychange", flush);
     window.addEventListener("pagehide", flush);
@@ -117,7 +117,8 @@ export function App() {
       c.height = bmp.height;
       c.getContext("2d")!.drawImage(bmp, 0, 0);
       const png = await new Promise<Blob | null>((r) => c.toBlob(r, "image/png"));
-      if (png) await putUpload(id, png);
+      if (!png) { bmp.close(); return null; }
+      if (!await putUpload(id, png)) setToastMsg("Sticker is available for this session only. Download a backup to keep it.");
       uploads.current.set(id, bmp);
       setUploadsVersion((v) => v + 1);
       return id;

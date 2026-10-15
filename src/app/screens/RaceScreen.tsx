@@ -5,7 +5,7 @@ import { buildTrack } from "../../sim/track/geometry.ts";
 import { liveSim, type LiveRace } from "../../sim/client.ts";
 import { CAR_STRIDE, STATUS_NAME } from "../../sim/protocol.ts";
 import type { RaceEvent } from "../../sim/race.ts";
-import { Seg } from "../ui.tsx";
+import { Modal, Seg } from "../ui.tsx";
 import { PLAYER_ID } from "../../game/formats.ts";
 import { settle } from "../../game/session.ts";
 import { trackById } from "../../sim/tracks.ts";
@@ -28,6 +28,7 @@ export function RaceScreen({ setup }: { setup: RaceSetup }) {
   const viewRef = useRef<RaceView | null>(null);
   const liveRef = useRef<LiveRace | null>(null);
   const framesRef = useRef<{ t: number[]; cars: Float32Array[] }>({ t: [], cars: [] });
+  const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState<number | null>(3);
   const [rows, setRows] = useState<Row[]>([]);
   const [events, setEvents] = useState<RaceEvent[]>([]);
@@ -124,9 +125,7 @@ export function RaceScreen({ setup }: { setup: RaceSetup }) {
           data: { setup, result, reward: settled.reward, notes: settled.notes, place: settled.place, cupNext: settled.cupNext, cupOver: settled.cupOver, frames: framesRef.current },
         });
       })
-      .catch(() => {
-        /* stopped */
-      });
+      .catch(e => { audio.stop(); setError(String(e)); });
   }
 
   const setSpeedBoth = (s: number) => {
@@ -145,6 +144,7 @@ export function RaceScreen({ setup }: { setup: RaceSetup }) {
 
   return (
     <div className="screen">
+      {error && <Modal label="Race interrupted"><h2>Race interrupted</h2><p>{error}</p><button className="btn primary" onClick={() => go({ name: "tracks" })}>Back to tracks</button></Modal>}
       <div className="hud-top">
         <div className="panel standings" aria-label="Standings">
           <div className="row spread small muted" style={{ marginBottom: 4 }}>

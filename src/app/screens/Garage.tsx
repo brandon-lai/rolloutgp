@@ -42,7 +42,8 @@ import { RaceView } from "../../render/raceView.ts";
 type Tab = "parts" | "inspect" | "test" | "builds";
 
 export function Garage() {
-  const { profile, save, go, toast, viewport } = useApp();
+  const { profile, save, go, toast, viewport, screen } = useApp();
+  const returnTo = screen.name === "garage" ? screen.returnTo : undefined;
   const build = activeBuild(profile);
   const [tab, setTab] = useState<Tab>("parts");
   const [slot, setSlot] = useState<SlotId | null>(null);
@@ -107,7 +108,7 @@ export function Garage() {
 
   return (
     <div className="screen">
-      <TopBar title="Garage" />
+      <TopBar title="Garage" back={returnTo ? () => go({ name: "results", data: returnTo }) : undefined} />
       <div className="sidepanel panel">
         <div className="tabs" role="tablist">
           {(
@@ -286,8 +287,8 @@ export function Garage() {
         )}
 
         <div className="panel-foot">
-          <button className="btn primary grow" onClick={() => go({ name: "tracks" })}>
-            <span>Race this car</span>
+          <button className="btn primary grow" onClick={() => go(returnTo ? { name: "results", data: returnTo } : { name: "tracks" })}>
+            <span>{returnTo ? "Return to cup" : "Race this car"}</span>
           </button>
           <button className="btn yellow" onClick={() => go({ name: "body" })}>
             <span>Body shop</span>

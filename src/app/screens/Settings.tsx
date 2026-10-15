@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { exportBackup, importBackup } from "../../store/backup.ts";
 import { useApp } from "../state.tsx";
 import { TopBar, Seg } from "../ui.tsx";
 import { useTurntable } from "../hooks.ts";
@@ -6,18 +8,23 @@ import { clearAll, setItem } from "../../store/db.ts";
 import { audio } from "../../render/audio.ts";
 
 export function SettingsScreen() {
-  const { profile, save, toast, viewport } = useApp();
+  const [busy, setBusy] = useState(false);
+  const { profile, save, toast, viewport, uploads } = useApp();
   useTurntable(activeBuild(profile), { x: -0.2, mx: 0, my: 0.3 });
   const s = profile.settings;
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => save((p) => ({ ...p, settings: { ...p.settings, [k]: v } }));
 
-  function exportSave() {
-    const blob = new Blob([JSON.stringify(profile, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "rollout-gp-save.json";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  async function exportSave() {
+    setBusy(true);
+    try {
+      const blob = new Blob([JSON.stringify(await exportBackup(profile))], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "rollout-gp-save.json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch { toast("Couldn't export the save. Try again."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -87,20 +94,38 @@ export function SettingsScreen() {
           </div>
           <div className="section">
             <h3>Your save</h3>
-            <p className="small muted">Everything is stored in this browser. Nothing is sent anywhere.</p>
+            <p className="small muted">Builds, ghosts and personal stickers stay in this browser. No analytics or tracking. Backups include your sticker images; share links omit them.</p>
             <div className="row">
-              <button className="btn small" onClick={exportSave}>
+              <button className="btn small" onClick={exportSave} disabled={busy}>
                 <span>Download save</span>
               </button>
+              <label className="btn small">
+                <span>Restore save</span>
+                <input type="file" accept="application/json,.json" aria-label="Restore save" disabled={busy} className="sr-only" onChange={async e => {
+                  const file = e.target.files?.[0]; e.target.value = '';
+                  if (!file) return;
+                  if (file.size > 64_000_000) return toast('Save file is too large (64 MB maximum).');
+                  if (!confirm('Replace your current garage with this backup? Download your current save first if you want to keep it.')) return;
+                  setBusy(true);
+                  try { const restored = await importBackup(JSON.parse(await file.text())); save(() => restored); setTimeout(() => location.reload(), 100); }
+                  catch (error) { toast(String(error)); setBusy(false); }
+                }} />
+              </label>
               <button
+                disabled={busy}
                 className="btn small ghost"
                 onClick={async () => {
                   if (!confirm("Delete all your builds, parts, tokens and designs? This can't be undone.")) return;
+                  setBusy(true);
+                  try {
                   await clearAll();
+                  for (const image of uploads.values()) image.close();
+                  uploads.clear();
                   const fresh = newProfile();
                   await setItem("profile", fresh);
                   save(() => fresh);
                   toast("Save deleted. Fresh kit car in the garage.");
+                  } catch (error) { toast(String(error)); } finally { setBusy(false); }
                 }}
               >
                 <span>Delete all data</span>
@@ -108,6 +133,7 @@ export function SettingsScreen() {
             </div>
           </div>
           <div className="section small muted">
+            <p>Rollout GP · v1.1 workshop edition</p>
             <p>
               Rollout GP is an original game inspired by the self-steering mini 4WD hobby and the 90s anime about it. Part names, cars and characters are original. Not affiliated with Tamiya or any show.
             </p>

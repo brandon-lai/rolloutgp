@@ -91,6 +91,7 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
   const { viewport, profile, save, uploads, go } = useApp();
   const viewRef = useRef<CityView | null>(null);
   const liveRef = useRef<LiveCity | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState<number | null>(3);
   const [hud, setHud] = useState<HudState | null>(null);
   const [events, setEvents] = useState<CityEvent[]>([]);
@@ -198,7 +199,7 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
         if (document.pointerLockElement) document.exitPointerLock();
         setDone({ r, score, reward, best });
       })
-      .catch(() => {});
+      .catch(e => { audio.stop(); v.frozen = true; setError(String(e)); });
   }
 
   // Actions.
@@ -255,6 +256,8 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
       if (k === "f") act.switchRoute();
       if (k === "q") act.cheer();
     };
+    const blur = () => { keys.current.clear(); stick.current = { x: 0, y: 0, sprint: false }; };
+    window.addEventListener("blur", blur);
     const up = (e: KeyboardEvent) => keys.current.delete(e.key.toLowerCase());
     const move = (e: MouseEvent) => {
       const view = v();
@@ -318,6 +321,7 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener("blur", blur);
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("mousemove", move);
@@ -388,6 +392,7 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
 
   return (
     <div className="screen">
+      {error && <Modal label="Run interrupted"><h2>Run interrupted</h2><p>{error}</p><button className="btn primary" onClick={onCourses}>Back to courses</button></Modal>}
       <div className="vignette" style={{ opacity: settings.vignette && h && keys.current.has("shift") ? 1 : 0 }} />
       {settings.cityView === "first" && <div className="crosshair" />}
       {arrowStyle && (

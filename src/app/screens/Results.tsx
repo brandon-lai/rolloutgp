@@ -76,7 +76,7 @@ export function Results({ data }: { data: ResultsData }) {
               <button className="btn primary big" onClick={again}>
                 <span>Round {data.cupNext.round + 1}: {cupNextTrack.name}</span>
               </button>
-              <button className="btn" onClick={() => go({ name: "garage" })}>
+              <button className="btn" onClick={() => go({ name: "garage", returnTo: data })}>
                 <span>Retune first</span>
               </button>
             </>
