@@ -22,7 +22,8 @@ export function useTurntable(build: Build | null, place: number | Placement = 0,
   const { viewport, uploads, uploadsVersion } = useApp();
   const ref = useRef<GarageView | null>(null);
   useEffect(() => {
-    if (!viewport) return;
+    // No build means the screen is showing something else (a replay): leave it be.
+    if (!viewport || build === null) return;
     let v = viewport.current instanceof GarageView ? viewport.current : null;
     if (!v) {
       v = new GarageView();

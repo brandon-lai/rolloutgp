@@ -1286,3 +1286,10 @@ table.t td {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* HUD chips sit over bright 3D scenes. */
+.hud-bottom .chip,
+.screen > .row .chip {
+  background: rgba(8, 16, 40, 0.82);
+  color: var(--text);
+}
