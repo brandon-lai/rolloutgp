@@ -174,9 +174,11 @@ describe("open class durability", () => {
   };
   it("a clean run breaks nothing; a crash in open class does; regulation never does", () => {
     expect(run(true)).toEqual([]);
-    const crash = { ...STARTER_BUILD, motor: "mo-sprint", gear: "ge-35" };
-    expect(run(true, crash, "sunday")).toContain("cracked body");
-    expect(run(false, crash, "sunday")).toEqual([]);
+    // A lightened clear shell on a car far too fast for the Grand Circuit.
+    const crash = { ...STARTER_BUILD, motor: "mo-sprint", gear: "ge-35", body: { ...STARTER_BUILD.body, clear: true, holes: 10 } };
+    expect(run(true, crash)).toContain("cracked body");
+    expect(run(true, crash).some((d) => d.startsWith("bent"))).toBe(true);
+    expect(run(false, crash)).toEqual([]);
   });
 });
 

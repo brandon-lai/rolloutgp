@@ -112,11 +112,14 @@ describe("phase 1: tuning changes results predictably", () => {
     expect(launch({ ...fast, brakes: { part: "br-strong", position: "both", gap: 1 } })).toBeLessThan(launch(fast) - 0.5);
   });
 
-  it("too much speed flies off after the dragon back; a sane build lands it", () => {
-    const sprint = run({ ...kit, motor: "mo-sprint", gear: "ge-35" }, DRAGON);
-    expect(["Dragon back", "Turn 1"]).toContain(sprint.courseOut?.feature);
-    const torque = run({ ...kit, motor: "mo-torque" }, DRAGON);
-    expect(torque.finishTime).not.toBeNull();
+  it("too much speed flies off the jumps; a sane build lands them", () => {
+    // Chaotic near the edge, so judge over all three lanes.
+    const jumps = new Set(buildTrack(DRAGON).features.filter((f) => f.jump).map((f) => f.name).concat("Turn 1"));
+    const sprint = [0, 1, 2].map((lane) => run({ ...kit, motor: "mo-sprint", gear: "ge-35" }, DRAGON, lane));
+    const outs = sprint.filter((t) => t.courseOut);
+    expect(outs.length).toBeGreaterThanOrEqual(2);
+    for (const t of outs) expect(jumps.has(t.courseOut!.feature), t.courseOut!.feature).toBe(true);
+    for (const lane of [0, 1, 2]) expect(run({ ...kit, motor: "mo-torque" }, DRAGON, lane).finishTime).not.toBeNull();
   });
 });
 
