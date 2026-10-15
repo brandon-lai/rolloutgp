@@ -128,6 +128,22 @@ export function App() {
 
   const go = useCallback((s: Screen) => setScreen(s), []);
 
+  // Development only: hooks for driving the app headlessly. Not in production builds.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __dev?: unknown }).__dev = {
+      grant: (n: number) => save((p) => ({ ...p, tokens: p.tokens + n })),
+      settings: (patch: Record<string, unknown>) => save((p) => ({ ...p, settings: { ...p.settings, ...patch } })),
+      equip: (patch: Record<string, unknown>) =>
+        save((p) => {
+          const builds = [...p.builds];
+          builds[p.active] = { ...builds[p.active], ...patch };
+          const owned = Array.from(new Set([...p.owned, ...Object.values(patch).filter((v): v is string => typeof v === "string")]));
+          return { ...p, builds, owned, seenIntro: true };
+        }),
+    };
+  }, [save]);
+
   const ctx: AppCtx | null = useMemo(
     () =>
       profile

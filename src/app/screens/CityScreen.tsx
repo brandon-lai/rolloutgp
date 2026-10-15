@@ -96,7 +96,8 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
   const [events, setEvents] = useState<CityEvent[]>([]);
   const [done, setDone] = useState<{ r: CityResult; score: number; reward: number; best: boolean } | null>(null);
   const [locked, setLocked] = useState(false);
-  const touch = typeof window !== "undefined" && matchMedia("(pointer: coarse)").matches;
+  // Touch controls on coarse pointers (phones, tablets); ?touch=1 forces them.
+  const touch = typeof window !== "undefined" && (matchMedia("(pointer: coarse)").matches || new URLSearchParams(location.search).get("touch") === "1");
   const spiritRef = useRef({ spirit: 0, mult: 1, cheerAt: -99, lastT: 0 });
   const keys = useRef(new Set<string>());
   const stick = useRef({ x: 0, y: 0, sprint: false });
@@ -332,12 +333,16 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
     const canvas = viewport.canvas;
     let id: number | null = null,
       lx = 0,
-      ly = 0;
+      ly = 0,
+      sx = 0,
+      sy = 0,
+      st = 0;
     const down = (e: PointerEvent) => {
       if (e.clientX < window.innerWidth * 0.35) return;
       id = e.pointerId;
-      lx = e.clientX;
-      ly = e.clientY;
+      lx = sx = e.clientX;
+      ly = sy = e.clientY;
+      st = performance.now();
     };
     const move = (e: PointerEvent) => {
       if (e.pointerId !== id || !viewRef.current) return;
@@ -347,7 +352,15 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
       ly = e.clientY;
     };
     const up = (e: PointerEvent) => {
-      if (e.pointerId === id) id = null;
+      if (e.pointerId !== id) return;
+      id = null;
+      // A quick flick up jumps, a flick down slides.
+      const dx = e.clientX - sx,
+        dy = e.clientY - sy;
+      if (performance.now() - st < 260 && Math.abs(dy) > 45 && Math.abs(dy) > Math.abs(dx) * 1.5 && viewRef.current) {
+        if (dy < 0) viewRef.current.input.jump = true;
+        else viewRef.current.input.slide = true;
+      }
     };
     canvas.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
@@ -365,9 +378,10 @@ function CityRunScreen({ course, onAgain, onCourses, cheerOn }: { course: Course
   const arrowStyle = (() => {
     if (!h || h.onScreen) return null;
     const a = h.bearing;
-    const r = 0.38;
+    const r = 0.36;
     const x = 50 + Math.sin(a) * r * 100;
-    const y = 50 - Math.cos(a) * r * 100;
+    // Keep clear of the HUD panels along the top.
+    const y = Math.max(26, 50 - Math.cos(a) * r * 100);
     return { left: `${x}%`, top: `${y}%`, transform: `rotate(${a}rad)` };
   })();
   const outStatus = h && (h.status === 1 || h.status === 2);

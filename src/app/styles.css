@@ -437,6 +437,12 @@ h3 {
   min-height: 0;
 }
 
+.panel-head,
+.panel-foot,
+.tabs {
+  flex-shrink: 0;
+}
+
 .panel-head {
   padding: 14px 16px 10px;
   border-bottom: 1px solid var(--line);
