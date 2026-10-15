@@ -37,6 +37,7 @@ export class Viewport {
   private overlay: HTMLOutputElement | null = null;
   private diagnosticAt = 0;
   private frameMs = 16.7;
+  onError?: (message:string)=>void;
 
   private constructor(canvas: HTMLCanvasElement, renderer: THREE.WebGPURenderer) {
     this.canvas = canvas;
@@ -108,12 +109,19 @@ export class Viewport {
     const dt = Math.min(0.1, raw);
     const v = this.view;
     if (!v) return;
-    v.update(dt);
-    this.focus.value = v.focusDistance ?? 7;
-    this.aperture.value = v.macro ? 1.1 : 0;
-    this.renderer.info.reset();
-    if (this.pipeline) this.pipeline.render();
-    else this.renderer.render(v.scene, v.camera);
+    try {
+      v.update(dt);
+      this.focus.value = v.focusDistance ?? 7;
+      this.aperture.value = v.macro ? 1.1 : 0;
+      this.renderer.info.reset();
+      if (this.pipeline) this.pipeline.render();
+      else this.renderer.render(v.scene, v.camera);
+    } catch(error) {
+      // A failed render must not leave an interactive HUD over a frozen image.
+      this.renderer.setAnimationLoop(null);
+      this.onError?.(String(error instanceof Error?error.message:error));
+      return;
+    }
     if (import.meta.env.DEV) {
       this.frameMs = this.frameMs * .9 + raw * 1000 * .1;
       if (this.overlay && now - this.diagnosticAt > 500) {

@@ -185,13 +185,13 @@ export function finishMaterial(recipe: BodyRecipe, map: THREE.Texture): THREE.Me
     roughnessMap: detail.roughness, normalMap: detail.normal,
     normalScale: new THREE.Vector2(.15,.15),
   });
-  if (f === 'clear') {
+  if (recipe.clear || f === 'clear') {
     m.transmission = currentQuality() === 'low' ? 0 : .82;
     m.thickness = .28 * MM;
     m.ior = 1.58;
     m.attenuationColor.set(recipe.paint.base);
     m.attenuationDistance = .08;
-    m.roughness = .12;
+    m.roughness = f === 'matte' ? .45 : .12;
     if (currentQuality() === 'low') { m.transparent = true; m.opacity = .45; }
   }
   return m;
@@ -270,8 +270,10 @@ export function bodyObject(recipe: BodyRecipe, uploads?: UploadLookup): { object
   tex.anisotropy = 4;
   const mat = finishMaterial(recipe, tex);
   const detailCanvas = document.createElement('canvas');
-  detailCanvas.width = TEX_W; detailCanvas.height = TEX_H;
+  const W=QUALITY[currentQuality()].texture,H=W/2;
+  detailCanvas.width = W; detailCanvas.height = H;
   const ctx = detailCanvas.getContext('2d')!;
+  ctx.scale(W/TEX_W,H/TEX_H);
   ctx.fillStyle = '#808080'; ctx.fillRect(0,0,TEX_W,TEX_H);
   ctx.strokeStyle = '#606060'; ctx.lineWidth = 2;
   for (const y of [TEX_H*.24,TEX_H*.76]) { ctx.beginPath(); ctx.moveTo(80,y); ctx.lineTo(940,y); ctx.stroke(); }
@@ -281,17 +283,18 @@ export function bodyObject(recipe: BodyRecipe, uploads?: UploadLookup): { object
     ctx.scale(1,TEX_H/girth(recipe)/(TEX_W/length));ctx.rotate(d.rot*Math.PI/180*mirror);
     drawSticker(ctx,d.sticker,d.size*TEX_W,'#aaaaaa',uploads);ctx.restore();
   }
-  const pixels = ctx.getImageData(0,0,TEX_W,TEX_H);
+  const pixels = ctx.getImageData(0,0,W,H);
   const normal = new Uint8Array(pixels.data.length);
-  const height = (x: number, y: number) => pixels.data[((Math.max(0,Math.min(TEX_H-1,y)))*TEX_W+Math.max(0,Math.min(TEX_W-1,x)))*4]/255;
-  for(let y=0;y<TEX_H;y++) for(let x=0;x<TEX_W;x++) {
-    const i=(y*TEX_W+x)*4;
+  const height = (x: number, y: number) => pixels.data[((Math.max(0,Math.min(H-1,y)))*W+Math.max(0,Math.min(W-1,x)))*4]/255;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++) {
+    const i=(y*W+x)*4;
     normal[i]=128+(height(x-1,y)-height(x+1,y))*35;
     normal[i+1]=128+(height(x,y+1)-height(x,y-1))*35;
     normal[i+2]=255;normal[i+3]=255;
   }
   mat.normalMap?.dispose();
-  mat.normalMap = new THREE.DataTexture(normal,TEX_W,TEX_H);
+  mat.normalMap = new THREE.DataTexture(normal,W,H);
+  mat.normalMap.flipY = true;
   mat.normalMap.needsUpdate = true;
   mat.normalScale.set(.5,.5);
   const shell = new THREE.Mesh(shellGeometry(recipe), mat);

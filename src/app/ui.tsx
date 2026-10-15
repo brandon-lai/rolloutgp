@@ -1,6 +1,6 @@
 // Shared UI pieces.
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode, type KeyboardEvent } from "react";
 import { useApp } from "./state.tsx";
 import { buildTrack, SAMPLE_STRIDE, type TrackDef } from "../sim/track/geometry.ts";
 import { TRACE_FIELDS, type Telemetry } from "../sim/race.ts";
@@ -12,6 +12,15 @@ export function Tokens({ n }: { n: number }) {
       {n.toLocaleString()}
     </span>
   );
+}
+
+export function tabKeys(e:KeyboardEvent<HTMLDivElement>) {
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+  const buttons=[...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const current=buttons.indexOf(document.activeElement as HTMLButtonElement);
+  if(current<0)return;e.preventDefault();
+  const index=e.key==='Home'?0:e.key==='End'?buttons.length-1:(current+(e.key==='ArrowLeft'?-1:1)+buttons.length)%buttons.length;
+  buttons[index].focus();buttons[index].click();
 }
 
 export function TopBar({ title, back, right }: { title: string; back?: () => void; right?: ReactNode }) {
@@ -32,9 +41,15 @@ export function TopBar({ title, back, right }: { title: string; back?: () => voi
 
 export function Seg<T extends string | number>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label?: string }) {
   return (
-    <div className="seg" role="radiogroup" aria-label={label}>
+    <div className="seg" role="radiogroup" aria-label={label} onKeyDown={e=>{
+      const keys=['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'];
+      if(!keys.includes(e.key))return;e.preventDefault();
+      const current=options.findIndex(o=>o.value===value),delta=['ArrowLeft','ArrowUp'].includes(e.key)?-1:1;
+      const index=e.key==='Home'?0:e.key==='End'?options.length-1:(current+delta+options.length)%options.length;
+      onChange(options[index].value);e.currentTarget.querySelectorAll<HTMLButtonElement>('button')[index]?.focus();
+    }}>
       {options.map((o) => (
-        <button key={String(o.value)} role="radio" aria-checked={o.value === value} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
+        <button key={String(o.value)} role="radio" tabIndex={o.value===value?0:-1} aria-checked={o.value === value} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}
@@ -43,8 +58,22 @@ export function Seg<T extends string | number>({ value, options, onChange, label
 }
 
 export function Modal({ children, onClose, label }: { children: ReactNode; onClose?: () => void; label: string }) {
+  const ref=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const previous=document.activeElement as HTMLElement|null;
+    (ref.current?.querySelector<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),[tabindex="0"]')??ref.current)?.focus();
+    return()=>{if(previous?.isConnected)previous.focus();};
+  },[]);
   return (
-    <div className="modal-back" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div ref={ref} tabIndex={-1} className="modal-back" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.target === e.currentTarget && onClose?.()} onKeyDown={e=>{
+      if(e.key==='Escape'&&onClose){e.preventDefault();onClose();}
+      if(e.key!=='Tab')return;
+      const items=[...e.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href],[tabindex="0"]')].filter(el=>el.getClientRects().length);
+      if(!items.length){e.preventDefault();return;}
+      const i=items.indexOf(document.activeElement as HTMLElement);
+      if(e.shiftKey&&i<=0){e.preventDefault();items[items.length-1].focus();}
+      else if(!e.shiftKey&&(i===items.length-1||i<0)){e.preventDefault();items[0].focus();}
+    }}>
       <div className="panel modal">{children}</div>
     </div>
   );

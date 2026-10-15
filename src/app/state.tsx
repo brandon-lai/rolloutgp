@@ -39,13 +39,14 @@ export type Screen =
   | { name: "race"; setup: RaceSetup }
   | { name: "results"; data: ResultsData }
   | { name: "replay"; data: ResultsData }
-  | { name: "body"; recipe?: BodyRecipe }
+  | { name: "body"; recipe?: BodyRecipe; returnTo?: ResultsData }
   | { name: "city"; course?: string }
   | { name: "settings" };
 
 export interface AppCtx {
   profile: Profile;
   save: (fn: (p: Profile) => Profile) => void;
+  replaceSave: (operation: () => Promise<Profile>) => Promise<void>;
   viewport: Viewport | null;
   screen: Screen;
   go: (s: Screen) => void;

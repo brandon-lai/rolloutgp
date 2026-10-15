@@ -6,6 +6,9 @@ import { MM } from '../src/sim/units.ts';
 import { partModel, disposeObject } from '../src/render/models/parts.ts';
 import { shellGeometry } from '../src/render/body.ts';
 import { QUALITY } from '../src/render/quality.ts';
+import { roadSurface } from '../src/render/cityView.ts';
+import { cityBoxes, PIT } from '../src/city/layout.ts';
+import { Mesh, MeshBasicMaterial, Raycaster } from 'three/webgpu';
 
 it('keeps every roller and tire within its catalog dimensions at every quality', () => {
   for (const quality of Object.keys(QUALITY) as (keyof typeof QUALITY)[]) {
@@ -23,6 +26,14 @@ it('keeps every roller and tire within its catalog dimensions at every quality',
       disposeObject(model);
     }
   }
+});
+
+it('leaves the sunken market pit open in the road surface',()=>{
+  const geometry=roadSurface(cityBoxes()),material=new MeshBasicMaterial(),road=new Mesh(geometry,material);
+  const hits=new Raycaster(new Vector3((PIT.x0+PIT.x1)/2,5,0),new Vector3(0,-1,0)).intersectObject(road);
+  expect(hits.length).toBeGreaterThan(0);
+  expect(hits[0].point.y).toBeCloseTo(-PIT.depth,5);
+  geometry.dispose();material.dispose();
 });
 
 it('cuts actual shell openings and retains finite recipe-sized geometry', () => {

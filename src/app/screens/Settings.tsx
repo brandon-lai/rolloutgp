@@ -9,7 +9,7 @@ import { audio } from "../../render/audio.ts";
 
 export function SettingsScreen() {
   const [busy, setBusy] = useState(false);
-  const { profile, save, toast, viewport, uploads } = useApp();
+  const { profile, save, replaceSave, toast, viewport, uploads } = useApp();
   useTurntable(activeBuild(profile), { x: -0.2, mx: 0, my: 0.3 });
   const s = profile.settings;
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => save((p) => ({ ...p, settings: { ...p.settings, [k]: v } }));
@@ -107,7 +107,7 @@ export function SettingsScreen() {
                   if (file.size > 64_000_000) return toast('Save file is too large (64 MB maximum).');
                   if (!confirm('Replace your current garage with this backup? Download your current save first if you want to keep it.')) return;
                   setBusy(true);
-                  try { const restored = await importBackup(JSON.parse(await file.text())); save(() => restored); setTimeout(() => location.reload(), 100); }
+                  try { const data=JSON.parse(await file.text()); await replaceSave(()=>importBackup(data)); location.reload(); }
                   catch (error) { toast(String(error)); setBusy(false); }
                 }} />
               </label>
@@ -118,12 +118,14 @@ export function SettingsScreen() {
                   if (!confirm("Delete all your builds, parts, tokens and designs? This can't be undone.")) return;
                   setBusy(true);
                   try {
-                  await clearAll();
+                  await replaceSave(async()=>{
+                    await clearAll();
+                    const fresh = newProfile();
+                    await setItem("profile", fresh);
+                    return fresh;
+                  });
                   for (const image of uploads.values()) image.close();
                   uploads.clear();
-                  const fresh = newProfile();
-                  await setItem("profile", fresh);
-                  save(() => fresh);
                   toast("Save deleted. Fresh kit car in the garage.");
                   } catch (error) { toast(String(error)); } finally { setBusy(false); }
                 }}
@@ -133,7 +135,7 @@ export function SettingsScreen() {
             </div>
           </div>
           <div className="section small muted">
-            <p>Rollout GP · v1.1 workshop edition</p>
+            <p>Rollout GP · v1.1.0-rc.1 · workshop preview</p>
             <p>
               Rollout GP is an original game inspired by the self-steering mini 4WD hobby and the 90s anime about it. Part names, cars and characters are original. Not affiliated with Tamiya or any show.
             </p>

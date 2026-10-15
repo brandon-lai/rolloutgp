@@ -68,10 +68,11 @@ export function partModel(p: Part, quality: Quality = currentQuality()): T.Group
     const round=tire.profile==='arched'?1.8:.55;
     const wheel=add(lathe([[r*.58,-h/2],[r-round,-h/2],[r,-h/2+round],[r,h/2-round],[r-round,h/2],[r*.58,h/2],[r*.58,-h/2]],n),rubber);
     wheel.rotation.x=Math.PI/2;
+    const hub=cylinder(2.3,h-.2,metal);hub.rotation.x=Math.PI/2;
     for(const side of [-1,1]) {
       const rim=add(new T.TorusGeometry(r*.56*MM,.45*MM,6,n),metal,0,0,side*(h/2-.5));
       void rim;
-      const hub=cylinder(2.3,h-.2,metal);hub.rotation.x=Math.PI/2;
+
       for(let i=0;i<6;i++) {
         const a=i*Math.PI/3;
         const spoke=box(r*.5,1.05,1,accent,Math.cos(a)*r*.3,Math.sin(a)*r*.3,side*(h/2-.7));spoke.rotation.z=a;
@@ -80,7 +81,7 @@ export function partModel(p: Part, quality: Quality = currentQuality()): T.Group
         add(new T.TorusGeometry((r-.9)*MM,.15*MM,4,n),rubber,0,0,side*(h/2-.16));
         for(let i=0;i<20;i++) {
           const a=i*Math.PI/10;
-          const dash=box(.5,.16,.1,metal,Math.cos(a)*r*.79,Math.sin(a)*r*.79,side*(h/2-.06));dash.rotation.z=a;
+          const dash=add(new T.BoxGeometry(.5*MM,.16*MM,.1*MM),rubber,Math.cos(a)*r*.79,Math.sin(a)*r*.79,side*(h/2-.06));dash.rotation.z=a;
         }
       }
     }

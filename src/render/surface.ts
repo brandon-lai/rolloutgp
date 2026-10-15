@@ -11,6 +11,6 @@ export function microSurface(size = 128, seed = 17): { roughness: T.DataTexture;
     rough[i]=rough[i+1]=rough[i+2]=Math.round(205+n*40+grain*7);rough[i+3]=255;
     normal[i]=Math.round(128+grain*3);normal[i+1]=Math.round(128+(n-.5)*5);normal[i+2]=255;normal[i+3]=255;
   }
-  const make=(data:Uint8Array)=>{const t=new T.DataTexture(data,size,size);t.wrapS=t.wrapT=T.RepeatWrapping;t.needsUpdate=true;return t;};
+  const make=(data:Uint8Array)=>{const t=new T.DataTexture(data,size,size);t.wrapS=t.wrapT=T.RepeatWrapping;t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;t.generateMipmaps=true;t.needsUpdate=true;return t;};
   return {roughness:make(rough),normal:make(normal)};
 }

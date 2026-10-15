@@ -107,6 +107,7 @@ export function migrateProfile(input: unknown): Profile {
   const bodies = Array.from(new Set([...(Array.isArray(p.bodies) ? p.bodies.filter((id) => presetById(id)) : []), ...base.bodies]));
   const builds = (Array.isArray(p.builds) ? p.builds : []).slice(0, MAX_BUILDS).map((b) => sanitizeBuild(b));
   const s = (p.settings ?? {}) as Partial<Settings>;
+  const count = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
   return {
     ...base,
     tokens: typeof p.tokens === "number" && Number.isFinite(p.tokens) ? Math.max(0, Math.floor(p.tokens)) : base.tokens,
@@ -116,19 +117,19 @@ export function migrateProfile(input: unknown): Profile {
     active: typeof p.active === "number" && Number.isInteger(p.active) && p.active >= 0 && p.active < Math.max(1, builds.length) ? p.active : 0,
     designs: (Array.isArray(p.designs) ? p.designs : []).slice(0, 24).map((d) => sanitizeRecipe(d, DEFAULT_BODY)),
     ghosts: typeof p.ghosts === "object" && p.ghosts ? Object.fromEntries(Object.entries(p.ghosts).filter(([, g]) => g && typeof g === "object" && Number.isFinite(g.time) && g.time > 0 && Number.isInteger(g.seed) && Number.isInteger(g.lane) && g.lane >= 0 && g.lane < 3).map(([k, g]) => [k, { ...g, build: sanitizeBuild(g.build) }])) : {},
-    medals: typeof p.medals === "object" && p.medals ? p.medals : {},
+    medals: typeof p.medals === "object" && p.medals ? Object.fromEntries(Object.entries(p.medals).map(([key, value]) => [key, Math.min(3, count(value))])) : {},
     cups: Array.isArray(p.cups) ? p.cups.filter((c) => typeof c === "string") : [],
-    city: typeof p.city === "object" && p.city ? p.city : {},
-    stats: { ...base.stats, ...(p.stats ?? {}) },
+    city: typeof p.city === "object" && p.city ? Object.fromEntries(Object.entries(p.city).filter(([, run]) => run && typeof run === 'object' && Number.isFinite(run.score) && run.score >= 0 && Number.isFinite(run.time) && run.time > 0)) : {},
+    stats: { races: count(p.stats?.races), wins: count(p.stats?.wins), courseOuts: count(p.stats?.courseOuts), cityRuns: count(p.stats?.cityRuns) },
     settings: {
       fov: typeof s.fov === "number" && Number.isFinite(s.fov) ? Math.min(110, Math.max(55, s.fov)) : DEFAULT_SETTINGS.fov,
-      headBob: s.headBob ?? DEFAULT_SETTINGS.headBob,
-      vignette: s.vignette ?? DEFAULT_SETTINGS.vignette,
+      headBob: typeof s.headBob === 'boolean' ? s.headBob : DEFAULT_SETTINGS.headBob,
+      vignette: typeof s.vignette === 'boolean' ? s.vignette : DEFAULT_SETTINGS.vignette,
       cityView: s.cityView === "third" || s.cityView === "drone" ? s.cityView : "first",
-      cheer: s.cheer ?? DEFAULT_SETTINGS.cheer,
+      cheer: typeof s.cheer === 'boolean' ? s.cheer : DEFAULT_SETTINGS.cheer,
       volume: typeof s.volume === "number" && Number.isFinite(s.volume) ? Math.min(1, Math.max(0, s.volume)) : DEFAULT_SETTINGS.volume,
       quality: s.quality === "low" || s.quality === "medium" || s.quality === "high" || s.quality === "ultra" ? s.quality : autoQuality(),
-      regulation: s.regulation ?? true,
+      regulation: typeof s.regulation === 'boolean' ? s.regulation : true,
       mouseSensitivity: typeof s.mouseSensitivity === "number" && Number.isFinite(s.mouseSensitivity) ? Math.min(3, Math.max(0.2, s.mouseSensitivity)) : 1,
     },
     seenIntro: Boolean(p.seenIntro),

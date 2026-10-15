@@ -63,19 +63,7 @@ export class RaceView implements View {
     this.disposeEnv = hallEnvironment(this.scene, geo.bounds);
     for (const b of builds) {
       const m = new CarModel(b.build, uploads);
-      if (b.ghost) {
-        m.root.traverse((o) => {
-          const mesh = o as THREE.Mesh;
-          if (mesh.material) {
-            const mat = (mesh.material as THREE.MeshStandardMaterial).clone();
-            mat.transparent = true;
-            mat.opacity = 0.35;
-            mat.depthWrite = false;
-            mesh.material = mat;
-            mesh.castShadow = false;
-          }
-        });
-      }
+      if (b.ghost) m.setGhost();
       this.scene.add(m.root);
       this.cars.push(m);
     }

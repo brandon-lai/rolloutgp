@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useApp } from "../state.tsx";
-import { TopBar, Seg } from "../ui.tsx";
+import { TopBar, tabKeys, Seg } from "../ui.tsx";
 import { useTurntable } from "../hooks.ts";
 import { activeBuild } from "../../store/profile.ts";
 import { BODY_LIMITS, BODY_SKIRT, bodyProps, sanitizeRecipe, type AddonKind, type BodyRecipe, type Decal } from "../../sim/body.ts";
@@ -14,7 +14,7 @@ type Tab = "shape" | "parts" | "paint" | "stickers" | "save";
 const PALETTE = ["#e8402a", "#ff7a00", "#ffd23f", "#2bb673", "#1f9bd1", "#1f6feb", "#7b2cbf", "#ff5fa2", "#f4f4f4", "#9aa0a6", "#3b4252", "#111111"];
 
 export function BodyShop({ initial }: { initial?: BodyRecipe }) {
-  const { profile, save, toast, addUpload, uploads, uploadsVersion } = useApp();
+  const { profile, save, toast, addUpload, uploads, uploadsVersion, go } = useApp();
   const build = activeBuild(profile);
   const [draft, setDraft] = useState<BodyRecipe>(() => initial ?? build.body);
   const [tab, setTab] = useState<Tab>("shape");
@@ -37,9 +37,9 @@ export function BodyShop({ initial }: { initial?: BodyRecipe }) {
 
   return (
     <div className="screen">
-      <TopBar title="Body shop" />
+      <TopBar title="Body shop" back={()=>go({name:'garage'})} />
       <div className="sidepanel panel">
-        <div className="tabs" role="tablist">
+        <div className="tabs" role="tablist" aria-label="Body designer sections" onKeyDown={tabKeys}>
           {(
             [
               ["shape", "Shape"],
@@ -49,7 +49,7 @@ export function BodyShop({ initial }: { initial?: BodyRecipe }) {
               ["save", "Save"],
             ] as [Tab, string][]
           ).map(([id, label]) => (
-            <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
+            <button key={id} role="tab" tabIndex={tab === id ? 0 : -1} aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
               {label}
             </button>
           ))}
@@ -349,7 +349,10 @@ const VX = (x: number) => 100 - x; // mm along -> svg x (nose on the left)
 
 function useDrag(onMove: (dx: number, dy: number, e: PointerEvent) => void) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const cleanup=useRef<(()=>void)|null>(null);
+  useEffect(()=>()=>cleanup.current?.(),[]);
   const start = (e: ReactPointerEvent) => {
+    cleanup.current?.();
     const svg = svgRef.current!;
     const target = e.currentTarget as Element;
     try {
@@ -370,9 +373,12 @@ function useDrag(onMove: (dx: number, dy: number, e: PointerEvent) => void) {
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
     };
+    cleanup.current=up;
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
   return { svgRef, start };
 }
@@ -407,6 +413,19 @@ function SideEditor({ recipe, clearance, sel, setSel, onChange }: { recipe: Body
             key={i}
             cx={VX(s.x)}
             cy={Y(s.top)}
+            tabIndex={0}
+            role="button"
+            aria-label={`Section ${i+1}: height ${s.top.toFixed(1)} mm. Arrow keys adjust height and position.`}
+            onFocus={()=>setSel(i)}
+            onKeyDown={e=>{
+              if(!e.key.startsWith('Arrow'))return;e.preventDefault();
+              onChange(r=>{
+                const a=[...r.sections].sort((a,b)=>b.x-a.x),v=a[i];
+                const lo=i<a.length-1?a[i+1].x+6:-85,hi=i>0?a[i-1].x-6:85;
+                a[i]={...v,top:Math.max(BODY_SKIRT+3,Math.min(62,v.top+(e.key==='ArrowUp'?1:e.key==='ArrowDown'?-1:0))),x:Math.max(lo,Math.min(hi,v.x+(e.key==='ArrowLeft'?1:e.key==='ArrowRight'?-1:0)))};
+                return {...r,sections:a};
+              });
+            }}
             r={i === sel ? 4.4 : 3.6}
             fill={i === sel ? "#ffd23f" : "#fff"}
             stroke="#0b1020"
@@ -461,6 +480,18 @@ function TopEditor({ recipe, sel, setSel, onChange }: { recipe: BodyRecipe; sel:
             key={i}
             cx={VX(s.x)}
             cy={C - s.w * S}
+            tabIndex={0}
+            role="slider"
+            aria-label={`Section ${i+1} half-width`}
+            aria-valuemin={8}
+            aria-valuemax={54}
+            aria-valuenow={s.w}
+            onFocus={()=>setSel(i)}
+            onKeyDown={e=>{
+              if(!e.key.startsWith('Arrow'))return;e.preventDefault();
+              const delta=['ArrowUp','ArrowRight'].includes(e.key)?1:-1;
+              onChange(r=>({...r,sections:[...r.sections].sort((a,b)=>b.x-a.x).map((v,j)=>j===i?{...v,w:Math.max(8,Math.min(54,v.w+delta))}:v)}));
+            }}
             r={i === sel ? 4.4 : 3.6}
             fill={i === sel ? "#ffd23f" : "#fff"}
             stroke="#0b1020"

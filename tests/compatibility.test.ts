@@ -17,6 +17,14 @@ it('repairs malformed ghosts and fractional active indices without discarding va
   expect(p.active).toBe(0);
   expect(p.ghosts).toEqual(legacy.ghosts);
 });
+it('repairs malformed progress before scores and counters reach the UI', () => {
+  const p = migrateProfile({ ...legacy, city: { ...legacy.city, bad: { score: null, time: 2 }, invalid: 'oops' }, medals: { practice: 'gold', sunday: 99 }, stats: { races: '2', wins: -1, courseOuts: 2.5 }, settings: { headBob: 'false', regulation: 0 } });
+  expect(p.city).toEqual(legacy.city);
+  expect(p.medals).toEqual({ practice: 0, sunday: 3 });
+  expect(p.stats).toEqual({ races: 0, wins: 0, courseOuts: 2, cityRuns: 0 });
+  expect(p.settings.headBob).toBe(true);
+  expect(p.settings.regulation).toBe(true);
+});
 it('restores legacy exports and rejects unrelated JSON before writing', () => {
   expect(parseBackup(legacy).profile).toEqual(legacy);
   expect(() => parseBackup({ foo: 'bar' })).toThrow();

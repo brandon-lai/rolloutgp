@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GarageView } from "../render/garageView.ts";
 import { useApp } from "./state.tsx";
 import type { Build } from "../sim/build.ts";
@@ -16,7 +16,13 @@ export interface Placement {
 
 export function useTurntable(build: Build | null, place: number | Placement = 0, showCog = false): GarageView | null {
   const pl: Placement = typeof place === "number" ? { x: place } : place;
-  const narrow = typeof window !== "undefined" && window.innerWidth <= 760;
+  const [narrow,setNarrow]=useState(()=>window.innerWidth<=760);
+  const [view,setView]=useState<GarageView|null>(null);
+  useEffect(()=>{
+    const query=matchMedia('(max-width: 760px)');
+    const resize=()=>setNarrow(query.matches);resize();query.addEventListener('change',resize);
+    return()=>query.removeEventListener('change',resize);
+  },[]);
   const offset = narrow ? pl.mx ?? 0 : pl.x;
   const offsetY = narrow ? pl.my ?? 0.22 : pl.y ?? 0;
   const { viewport, uploads, uploadsVersion } = useApp();
@@ -31,6 +37,7 @@ export function useTurntable(build: Build | null, place: number | Placement = 0,
       viewport.setView(v);
     }
     ref.current = v;
+    setView(v);
   }, [viewport, build === null]);
   useEffect(() => {
     const v = ref.current;
@@ -43,6 +50,6 @@ export function useTurntable(build: Build | null, place: number | Placement = 0,
       ref.current.offsetY = offsetY;
       ref.current.showCog = showCog;
     }
-  }, [offset, offsetY, showCog, viewport]);
-  return ref.current;
+  }, [offset, offsetY, showCog, viewport, view]);
+  return view;
 }

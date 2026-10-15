@@ -1,14 +1,16 @@
 {
   "name": "rolloutgp",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0-rc.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "models:bake": "node --import tsx tools/models/bake.ts",
+    "models:budget": "node --import tsx tools/models/budgets.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-deterministic-compat": "0.21.0",

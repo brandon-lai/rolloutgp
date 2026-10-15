@@ -122,7 +122,7 @@ export class CityView implements View {
     this.disposables.push(trailGeo, trailMat, glowTex, glowMat);
 
     // The runner's body (seen in third person and from the drone).
-    this.runnerBody = runnerModel();
+    this.runnerBody = runnerModel(currentQuality()==='low'?8:12);
     this.scene.add(this.runnerBody, this.camera);
     this.camera.add(this.arms);
 
@@ -165,8 +165,8 @@ export class CityView implements View {
     asphalt.normal.repeat.set(400,400);asphalt.roughness.repeat.set(400,400);
     const roadMat = new THREE.MeshStandardMaterial({ map: roadTex, roughness: .94,normalMap:asphalt.normal,roughnessMap:asphalt.roughness,normalScale:new THREE.Vector2(.8,.8) });
     this.disposables.push(asphalt.normal,asphalt.roughness);
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), roadMat);
-    road.rotation.x = -Math.PI / 2;
+    // Use the existing ground rectangles so asphalt does not cover the sunken pit.
+    const road = new THREE.Mesh(roadSurface(boxes), roadMat);
     road.receiveShadow = true;
     this.world.add(road);
     const paveMat = new THREE.MeshStandardMaterial({ color: 0xcdbfa6, roughness: 0.9 });
@@ -302,7 +302,7 @@ export class CityView implements View {
     this.forkChoice.set(seg, choice);
   }
 
-  setQuality(q: Quality) { this.car.setQuality(q); }
+  setQuality(q: Quality) { this.car.setQuality(q); if(this.details)this.details.visible=q!=='low'; }
 
   update(dt: number): void {
     // Car: draw slightly in the past, interpolated.
@@ -445,6 +445,18 @@ export class CityView implements View {
 }
 
 // ----- Geometry helpers -------------------------------------------------------------
+
+export function roadSurface(boxes:Box[]):THREE.BufferGeometry {
+  const positions:number[]=[],uv:number[]=[],indices:number[]=[];
+  for(const b of boxes.filter(b=>b.kind==='ground')) {
+    const start=positions.length/3;
+    for(const [x,z] of [[b.x-b.hx,b.z+b.hz],[b.x+b.hx,b.z+b.hz],[b.x+b.hx,b.z-b.hz],[b.x-b.hx,b.z-b.hz]]) {
+      positions.push(x,b.y+b.hy,z);uv.push((x+200)/400,(200-z)/400);
+    }
+    indices.push(start,start+1,start+2,start,start+2,start+3);
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();return g;
+}
 
 function sweep(data: Float64Array, count: number, ...profiles: [number, number][][]): THREE.BufferGeometry {
   const pos: number[] = [];

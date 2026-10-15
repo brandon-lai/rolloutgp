@@ -35,6 +35,7 @@ export class GarageView implements View {
   private cogMarker: THREE.Mesh;
   private dead = false;
   private workshop: THREE.Object3D | null = null;
+  private contact: THREE.Mesh | null = null;
   showCog = false;
 
   constructor() {
@@ -48,6 +49,7 @@ export class GarageView implements View {
     key.shadow.normalBias = .002;
     key.shadow.mapSize.set(1024, 1024);
     const sc = key.shadow.camera as THREE.OrthographicCamera;
+    sc.near = .1;sc.far = 20;
     sc.left = sc.bottom = -4;
     sc.right = sc.top = 4;
     const rim = new THREE.DirectionalLight(0xcbdce9, 1.5);
@@ -134,6 +136,18 @@ export class GarageView implements View {
     const spec = carSpec(build);
     this.car.root.position.y = -0.12 + (spec.wheelRadius - spec.axleY);
     this.turntable.add(this.car.root);
+    if(this.contact){this.turntable.remove(this.contact);disposeObject(this.contact);}
+    const mask=document.createElement('canvas');mask.width=256;mask.height=128;
+    const ctx=mask.getContext('2d')!;
+    // An inexpensive contact mask grounds Low as well as the shadowed tiers.
+    for(const wheel of spec.wheels) {
+      ctx.save();ctx.translate((wheel.x/2+.5)*256,(wheel.z/1.4+.5)*128);ctx.scale(1,.55);
+      const gradient=ctx.createRadialGradient(0,0,1,0,0,14);gradient.addColorStop(0,'rgba(0,0,0,.55)');gradient.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=gradient;ctx.fillRect(-14,-14,28,28);ctx.restore();
+    }
+    const texture=new THREE.CanvasTexture(mask);
+    this.contact=new THREE.Mesh(new THREE.PlaneGeometry(2,1.4),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}));
+    this.contact.rotation.x=-Math.PI/2;this.contact.position.y=-.119;this.turntable.add(this.contact);
   }
 
   /** Centre of gravity, car-local mm, for the body shop's marker. */
@@ -172,6 +186,7 @@ export class GarageView implements View {
   dispose(): void {
     this.dead = true;
     if(this.workshop)disposeObject(this.workshop);
+    if(this.contact)disposeObject(this.contact);
     disposeObject(this.cogMarker);
     this.cleanup?.();
     this.car?.dispose();

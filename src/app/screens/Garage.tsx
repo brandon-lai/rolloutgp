@@ -2,7 +2,7 @@ import { PartThumbnail } from "../PartThumbnail.tsx";
 import { useMemo, useState, type ReactNode } from "react";
 import { useApp } from "../state.tsx";
 import { useTurntable } from "../hooks.ts";
-import { TopBar, Seg, fmtTime } from "../ui.tsx";
+import { TopBar, tabKeys, Seg, fmtTime } from "../ui.tsx";
 import { activeBuild, buyBody, buyPart, canBuy, MAX_BUILDS } from "../../store/profile.ts";
 import { STARTER_BUILD, carSpec, fitProblems, inspect, type Build } from "../../sim/build.ts";
 import {
@@ -111,7 +111,7 @@ export function Garage() {
     <div className="screen">
       <TopBar title="Garage" back={returnTo ? () => go({ name: "results", data: returnTo }) : undefined} />
       <div className="sidepanel panel">
-        <div className="tabs" role="tablist">
+        <div className="tabs" role="tablist" aria-label="Garage sections" onKeyDown={tabKeys}>
           {(
             [
               ["parts", "Parts"],
@@ -120,7 +120,7 @@ export function Garage() {
               ["builds", "Builds"],
             ] as [Tab, string][]
           ).map(([id, label]) => (
-            <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => (setTab(id), setSlot(null))}>
+            <button key={id} role="tab" tabIndex={tab === id ? 0 : -1} aria-selected={tab === id} className={tab === id ? "on" : ""} onClick={() => (setTab(id), setSlot(null))}>
               {label}
             </button>
           ))}

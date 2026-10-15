@@ -1,6 +1,7 @@
 import { autoQuality } from "../render/quality.ts";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Viewport } from "../render/viewport.ts";
+import { uploadIds } from "../store/backup.ts";
 import { getItem, putUpload, getUpload, setItem } from "../store/db.ts";
 import { migrateProfile, newProfile, randomId, type Profile } from "../store/profile.ts";
 import { Ctx, type AppCtx, type Screen } from "./state.tsx";
@@ -30,6 +31,24 @@ export function App() {
   const [uploadsVersion, setUploadsVersion] = useState(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef<Profile | null>(null);
+  const pendingWrite = useRef<Promise<boolean>>(Promise.resolve(true));
+  const replacing = useRef(false);
+  const persist = useCallback(() => {
+    const value=latest.current;
+    if(!value||replacing.current)return;
+    pendingWrite.current=pendingWrite.current.then(()=>setItem(PROFILE_KEY,value)).catch(()=>false);
+    void pendingWrite.current.then(ok=>{if(!ok)setToastMsg('Browser storage is unavailable. Download a save before closing this tab.');});
+  },[]);
+  const replaceSave = useCallback(async(operation:()=>Promise<Profile>)=>{
+    if(replacing.current)throw new Error('A save operation is already in progress.');
+    replacing.current=true;
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    try {
+      await pendingWrite.current;
+      const next=await operation();
+      latest.current=next;setProfile(next);
+    } finally {replacing.current=false;}
+  },[]);
 
   // Load the profile.
   useEffect(() => {
@@ -38,9 +57,7 @@ export function App() {
       latest.current = p;
       setProfile(p);
       // Load any personal sticker images used by saved designs.
-      const ids = new Set<string>();
-      for (const b of p.builds) for (const d of b.body.paint.decals) if (d.sticker.startsWith("upload:")) ids.add(d.sticker.slice(7));
-      for (const r of p.designs) for (const d of r.paint.decals) if (d.sticker.startsWith("upload:")) ids.add(d.sticker.slice(7));
+      const ids = uploadIds(p);
       Promise.allSettled(
         [...ids].map(async (id) => {
           const blob = await getUpload(id);
@@ -62,6 +79,7 @@ export function App() {
       .then((v) => {
         if (cancelled) return v.dispose();
         vp = v;
+        v.onError=setGlError;
         setViewport(v);
         if (import.meta.env.DEV) (window as unknown as { __rollout?: unknown }).__rollout = { backend: v.backend };
       })
@@ -77,22 +95,18 @@ export function App() {
   }, [viewport, profile?.settings.quality]);
 
   const save = useCallback((fn: (p: Profile) => Profile) => {
-    setProfile((p) => {
-      if (!p) return p;
-      const next = fn(p);
-      latest.current = next;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        if (latest.current) void setItem(PROFILE_KEY, latest.current).then(ok => { if (!ok) setToastMsg("Browser storage is unavailable. Download a save before closing this tab."); });
-      }, 250);
-      return next;
-    });
-  }, []);
+    const p=latest.current;
+    if(replacing.current||!p)return;
+    const next=fn(p);
+    latest.current=next;setProfile(next);
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(persist,250);
+  }, [persist]);
 
   // Flush on tab hide.
   useEffect(() => {
     const flush = () => {
-      if (latest.current) void setItem(PROFILE_KEY, latest.current).then(ok => { if (!ok) setToastMsg("Browser storage is unavailable. Download a save before closing this tab."); });
+      persist();
     };
     document.addEventListener("visibilitychange", flush);
     window.addEventListener("pagehide", flush);
@@ -100,7 +114,7 @@ export function App() {
       document.removeEventListener("visibilitychange", flush);
       window.removeEventListener("pagehide", flush);
     };
-  }, []);
+  }, [persist]);
 
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -128,7 +142,12 @@ export function App() {
     }
   }, []);
 
-  const go = useCallback((s: Screen) => setScreen(s), []);
+  const go = useCallback((s: Screen) => setScreen(previous => {
+    if ((s.name === 'garage' || s.name === 'body') && (previous.name === 'garage' || previous.name === 'body')) {
+      return { ...s, returnTo: s.returnTo ?? previous.returnTo };
+    }
+    return s;
+  }), []);
 
   // Development only: hooks for driving the app headlessly. Not in production builds.
   useEffect(() => {
@@ -149,9 +168,9 @@ export function App() {
   const ctx: AppCtx | null = useMemo(
     () =>
       profile
-        ? { profile, save, viewport, screen, go, toast, uploads: uploads.current, addUpload, uploadsVersion }
+        ? { profile, save, replaceSave, viewport, screen, go, toast, uploads: uploads.current, addUpload, uploadsVersion }
         : null,
-    [profile, save, viewport, screen, go, toast, addUpload, uploadsVersion],
+    [profile, save, replaceSave, viewport, screen, go, toast, addUpload, uploadsVersion],
   );
 
   return (
@@ -163,6 +182,11 @@ export function App() {
             <h2>3D isn't available</h2>
             <p>This browser couldn't start WebGPU or WebGL 2, which the races need. Try a recent Chrome, Edge, Firefox or Safari, and check hardware acceleration is on.</p>
             <p className="muted small">{glError}</p>
+            <button className="btn primary" onClick={async()=>{
+              const p=latest.current;
+              if(p){const next={...p,settings:{...p.settings,quality:'low' as const}};await replaceSave(async()=>{await setItem(PROFILE_KEY,next);return next;});}
+              location.reload();
+            }}>Reload with Low graphics</button>
           </div>
         </div>
       )}
