@@ -63,7 +63,8 @@ export function settle(
       const ghost = p.ghosts[setup.trackId];
       if (!ghost || time < ghost.time) {
         next = { ...next, ghosts: { ...next.ghosts, [setup.trackId]: { time, build: setup.build, seed: setup.seed, lane: setup.lane, at: new Date().toISOString() } } };
-        notes.push(ghost ? `New best by ${(ghost.time - time).toFixed(2)} s: this run is your ghost now` : "This run is your ghost now");
+        const by = ghost ? ghost.time - time : 0;
+        notes.push(ghost ? `New best by ${by < 0.01 ? by.toFixed(3) : by.toFixed(2)} s: this run is your ghost now` : "This run is your ghost now");
       }
     } else {
       reward = 5;
