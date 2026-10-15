@@ -1,3 +1,4 @@
+import { reducedMotion } from "./quality.ts";
 // The car on a turntable: the home screen, the garage and the body shop. Drag to
 // spin it; it idles round slowly on its own.
 
@@ -10,6 +11,8 @@ import { BODY_SKIRT } from "../sim/body.ts";
 import { MM } from "../sim/units.ts";
 
 export class GarageView implements View {
+  macro = true;
+  focusDistance = 7;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(32, 1, 0.05, 200);
   private car: CarModel | null = null;
@@ -134,8 +137,9 @@ export class GarageView implements View {
     this.cogMarker.userData.local = new THREE.Vector3(x * MM, (y + BODY_SKIRT * 0) * MM, 0);
   }
 
+
   update(dt: number): void {
-    if (!this.dragging) {
+    if (!this.dragging && !reducedMotion()) {
       this.spinVel += (0.25 - this.spinVel) * Math.min(1, dt * 1.5);
       this.yaw += this.spinVel * dt * 0.6;
     }
@@ -147,6 +151,7 @@ export class GarageView implements View {
     const dist = Math.max(this.dist, fit);
     this.camera.position.set(Math.sin(0.4) * dist * Math.cos(this.pitch), Math.sin(this.pitch) * dist + 0.2, Math.cos(0.4) * dist * Math.cos(this.pitch));
     this.camera.lookAt(target);
+    this.focusDistance = this.camera.position.distanceTo(target);
     // Shift the picture so the car sits clear of the panels: offset is the car's
     // screen position from centre as a fraction of width (x) and height (y, up).
     const W = 1000 * this.camera.aspect;

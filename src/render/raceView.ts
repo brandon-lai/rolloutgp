@@ -28,6 +28,8 @@ interface Station {
 }
 
 export class RaceView implements View {
+  macro = true;
+  focusDistance = 10;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(40, 1, 0.05, 900);
   readonly cars: CarModel[] = [];
@@ -158,6 +160,7 @@ export class RaceView implements View {
     return this.renderT;
   }
 
+
   update(dt: number): void {
     const f = this.frames;
     if (f.length > 0) {
@@ -238,6 +241,8 @@ export class RaceView implements View {
     }
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.camLook);
+    this.focusDistance = this.camera.position.distanceTo(target);
+    this.macro = this.mode !== "overhead";
     this.camera.updateProjectionMatrix();
   }
 

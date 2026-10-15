@@ -17,3 +17,7 @@ There are only ten commit subjects in this repository, all reviewed.
 
 At both 1280×800 and 390×844, capture and read: home; garage Parts, Inspect, Test lane, Builds; each of nine part pickers; track select; live heat; results; replay; body shop Shape, Parts, Paint, Stickers, Save; settings; city course picker; city first person, third person, drone, forced touch (`?touch=1`).
 Repeat after each visual stage. Add Low/Medium/High/Ultra in garage, a three-car heat and city. Test clear shells, 12 holes, uploaded stickers, all body presets and extreme legal roller/tire sizes. Check missing assets, render errors, overflow, contrast, focus and camera clipping. Do not infer fps from SwiftShader.
+
+Renderer foundation: 35 tests pass. Build passes. Entry 937.87 kB (269.60 gzip), shared car/render chunk 252.04 kB (67.95 gzip); city screen 36.80 kB (13.96 gzip) now lazy. Worker hash remains DwMzx2No. Pixel verification blocked as above. Branch push attempted and failed at GitHub DNS resolution.
+
+`brew install --cask blender` attempted: denied writes to Homebrew directories/cache. Blender assets cannot be generated in this sandbox. No account or API key was used.

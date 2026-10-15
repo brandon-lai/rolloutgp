@@ -88,7 +88,7 @@ export function SettingsScreen() {
             </div>
             <div className="row" style={{ marginTop: 10 }}>
               <span className="fieldlabel grow">Quality</span>
-              <Seg label="Quality" value={s.quality} options={[{ value: "high", label: "High" }, { value: "low", label: "Fast" }]} onChange={(v) => set("quality", v)} />
+              <Seg label="Quality" value={s.quality} options={[{ value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" }, { value: "ultra", label: "Ultra" }]} onChange={(v) => set("quality", v)} />
             </div>
             <p className="small muted">Rendering with {viewport?.backend === "webgpu" ? "WebGPU" : "WebGL 2"} · {Math.round(viewport?.fps ?? 0)} fps</p>
           </div>

@@ -1,3 +1,4 @@
+import { autoQuality, type Quality } from "../render/quality.ts";
 // The player's save: tokens, owned parts and bodies, garage builds, ghosts and
 // settings. Progression is earned by racing; there is nothing to buy with money.
 
@@ -16,7 +17,7 @@ export interface Settings {
   /** The cheer boost (a small, short voltage bump while in range). */
   cheer: boolean;
   volume: number; // 0..1
-  quality: "high" | "low";
+  quality: Quality;
   /** Regulation (Tamiya limits) or open class in the garage. */
   regulation: boolean;
   mouseSensitivity: number;
@@ -57,7 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cityView: "first",
   cheer: true,
   volume: 0.7,
-  quality: "high",
+  quality: autoQuality(),
   regulation: true,
   mouseSensitivity: 1,
 };
@@ -126,7 +127,7 @@ export function migrateProfile(input: unknown): Profile {
       cityView: s.cityView === "third" || s.cityView === "drone" ? s.cityView : "first",
       cheer: s.cheer ?? DEFAULT_SETTINGS.cheer,
       volume: typeof s.volume === "number" && Number.isFinite(s.volume) ? Math.min(1, Math.max(0, s.volume)) : DEFAULT_SETTINGS.volume,
-      quality: s.quality === "low" ? "low" : "high",
+      quality: s.quality === "low" || s.quality === "medium" || s.quality === "high" || s.quality === "ultra" ? s.quality : autoQuality(),
       regulation: s.regulation ?? true,
       mouseSensitivity: typeof s.mouseSensitivity === "number" && Number.isFinite(s.mouseSensitivity) ? Math.min(3, Math.max(0.2, s.mouseSensitivity)) : 1,
     },

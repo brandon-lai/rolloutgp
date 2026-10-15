@@ -1,17 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { autoQuality } from "../render/quality.ts";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Viewport } from "../render/viewport.ts";
 import { getItem, putUpload, getUpload, setItem } from "../store/db.ts";
 import { migrateProfile, newProfile, randomId, type Profile } from "../store/profile.ts";
 import { Ctx, type AppCtx, type Screen } from "./state.tsx";
 import { Home } from "./screens/Home.tsx";
-import { Garage } from "./screens/Garage.tsx";
-import { Tracks } from "./screens/Tracks.tsx";
-import { RaceScreen } from "./screens/RaceScreen.tsx";
-import { Results } from "./screens/Results.tsx";
-import { Replay } from "./screens/Replay.tsx";
-import { BodyShop } from "./screens/BodyShop.tsx";
-import { CityScreen } from "./screens/CityScreen.tsx";
-import { SettingsScreen } from "./screens/Settings.tsx";
+const Garage = lazy(() => import("./screens/Garage.tsx").then(m => ({ default: m.Garage })));
+const Tracks = lazy(() => import("./screens/Tracks.tsx").then(m => ({ default: m.Tracks })));
+const RaceScreen = lazy(() => import("./screens/RaceScreen.tsx").then(m => ({ default: m.RaceScreen })));
+const Results = lazy(() => import("./screens/Results.tsx").then(m => ({ default: m.Results })));
+const Replay = lazy(() => import("./screens/Replay.tsx").then(m => ({ default: m.Replay })));
+const BodyShop = lazy(() => import("./screens/BodyShop.tsx").then(m => ({ default: m.BodyShop })));
+const CityScreen = lazy(() => import("./screens/CityScreen.tsx").then(m => ({ default: m.CityScreen })));
+const SettingsScreen = lazy(() => import("./screens/Settings.tsx").then(m => ({ default: m.SettingsScreen })));
 import { Incoming as IncomingModal } from "./screens/Incoming.tsx";
 import { readHash, type Incoming } from "./share.ts";
 
@@ -57,7 +58,7 @@ export function App() {
   useEffect(() => {
     let vp: Viewport | null = null;
     let cancelled = false;
-    Viewport.create(canvas.current!, "high")
+    Viewport.create(canvas.current!, autoQuality())
       .then((v) => {
         if (cancelled) return v.dispose();
         vp = v;
@@ -170,6 +171,7 @@ export function App() {
       ) : (
         <Ctx.Provider value={ctx}>
           <div className="ui">
+            <Suspense fallback={<div className="loading" role="status">Opening the garage…</div>}>
             {screen.name === "home" && <Home />}
             {screen.name === "garage" && <Garage />}
             {screen.name === "tracks" && <Tracks initial={screen.format} />}
@@ -179,6 +181,7 @@ export function App() {
             {screen.name === "body" && <BodyShop initial={screen.recipe} />}
             {screen.name === "city" && <CityScreen initial={screen.course} />}
             {screen.name === "settings" && <SettingsScreen />}
+            </Suspense>
             {incoming && <IncomingModal incoming={incoming} onClose={() => setIncoming(null)} />}
             {toastMsg && (
               <div className="toast" role="status">
