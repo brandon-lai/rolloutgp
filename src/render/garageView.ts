@@ -1,3 +1,4 @@
+import { disposeObject } from "./models/parts.ts";
 import { reducedMotion, type Quality } from "./quality.ts";
 // The car on a turntable: the home screen, the garage and the body shop. Drag to
 // spin it; it idles round slowly on its own.
@@ -20,7 +21,7 @@ export class GarageView implements View {
   private readonly disposables: { dispose(): void }[] = [];
   private yaw = -0.6;
   private pitch = 0.32;
-  private dist = 7.2;
+  private dist = 5.4;
   private spinVel = 0.25;
   private dragging = false;
   private canvas: HTMLCanvasElement | null = null;
@@ -30,42 +31,45 @@ export class GarageView implements View {
   /** ...and of height (+ up). */
   offsetY = 0;
   /** World width that must fit across the screen, u. */
-  fitWidth = 3.4;
+  fitWidth = 2.5;
   private cogMarker: THREE.Mesh;
+  private dead = false;
+  private workshop: THREE.Object3D | null = null;
   showCog = false;
 
   constructor() {
-    this.scene.background = new THREE.Color(0x0d1b3e);
-    this.scene.fog = new THREE.Fog(0x0d1b3e, 14, 30);
-    const hemi = new THREE.HemisphereLight(0xdfe9ff, 0x1a2140, 1.4);
-    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    this.scene.background = new THREE.Color(0x191c1e);
+    this.scene.fog = new THREE.Fog(0x191c1e, 14, 30);
+    const hemi = new THREE.HemisphereLight(0xe5e9ec, 0x35312b, .35);
+    const key = new THREE.DirectionalLight(0xfff6e7, 3.2);
     key.position.set(4, 7, 5);
     key.castShadow = true;
+    key.shadow.bias = -.0001;
+    key.shadow.normalBias = .002;
     key.shadow.mapSize.set(1024, 1024);
     const sc = key.shadow.camera as THREE.OrthographicCamera;
     sc.left = sc.bottom = -4;
     sc.right = sc.top = 4;
-    const rim = new THREE.DirectionalLight(0x7fb8ff, 1.4);
+    const rim = new THREE.DirectionalLight(0xcbdce9, 1.5);
     rim.position.set(-5, 3, -4);
     this.scene.add(hemi, key, rim);
 
-    // Turntable: a disc with a checker ring.
-    const discMat = new THREE.MeshStandardMaterial({ color: 0x1d3a78, roughness: 0.6, metalness: 0.1 });
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.5, 0.12, 64), discMat);
-    disc.position.y = -0.18;
-    disc.receiveShadow = true;
-    const ringTex = checkerRing();
-    const ringMat = new THREE.MeshStandardMaterial({ map: ringTex, roughness: 0.7, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeometry(2.0, 2.4, 128, 16), ringMat);
-    ring.position.y = -0.115;
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0b1530, roughness: 0.95 });
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 48), floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.24;
-    floor.receiveShadow = true;
-    this.turntable.add(disc, ring);
-    this.scene.add(this.turntable, floor);
-    this.disposables.push(disc.geometry, discMat, ring.geometry, ringMat, ringTex, floor.geometry, floorMat);
+    const discMat = new THREE.MeshPhysicalMaterial({ color: 0x33383c, roughness: .38, metalness: .65, clearcoat: .25 });
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.4, .1, 64), discMat);
+    disc.position.y = -.17;disc.receiveShadow = true;
+    const rimMat = new THREE.MeshStandardMaterial({color:0x9b9e9e,metalness:.85,roughness:.28});
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.36,.018,8,64),rimMat);
+    ring.rotation.x=Math.PI/2;ring.position.y=-.125;
+    const floorMat = new THREE.MeshStandardMaterial({color:0x282b2c,roughness:.75});
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(80,80),floorMat);
+    floor.rotation.x=-Math.PI/2;floor.position.y=-.5;floor.receiveShadow=true;
+    this.turntable.add(disc,ring);this.scene.add(this.turntable,floor);
+    this.disposables.push(disc.geometry,discMat,ring.geometry,rimMat,floor.geometry,floorMat);
+    // Load props after the hero is available. Failure leaves a complete turntable.
+    void import('./workshopAsset.ts').then(m=>m.loadWorkshop()).then(model=>{
+      if(this.dead){disposeObject(model);return;}
+      this.workshop=model;this.scene.add(model);
+    }).catch(()=>{});
 
     this.cogMarker = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffd23f, depthTest: false }));
     this.cogMarker.renderOrder = 10;
@@ -166,49 +170,12 @@ export class GarageView implements View {
   }
 
   dispose(): void {
+    this.dead = true;
+    if(this.workshop)disposeObject(this.workshop);
+    disposeObject(this.cogMarker);
     this.cleanup?.();
     this.car?.dispose();
     this.disposables.forEach((d) => d.dispose());
     void this.canvas;
   }
-}
-
-function checkerRing(): THREE.CanvasTexture {
-  const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 32;
-  const ctx = c.getContext("2d")!;
-  for (let i = 0; i < 16; i++)
-    for (let j = 0; j < 2; j++) {
-      ctx.fillStyle = (i + j) % 2 ? "#f5f5f2" : "#111";
-      ctx.fillRect(i * 16, j * 16, 16, 16);
-    }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = THREE.RepeatWrapping;
-  return t;
-}
-
-/** Flat ring whose texture runs round it (u = angle), unlike RingGeometry's planar UVs. */
-function ringGeometry(r0: number, r1: number, segs: number, repeat: number): THREE.BufferGeometry {
-  const pos: number[] = [];
-  const uv: number[] = [];
-  const idx: number[] = [];
-  for (let i = 0; i <= segs; i++) {
-    const a = (i / segs) * Math.PI * 2;
-    const c = Math.cos(a),
-      s = Math.sin(a);
-    pos.push(c * r0, 0, s * r0, c * r1, 0, s * r1);
-    uv.push((i / segs) * repeat, 0, (i / segs) * repeat, 1);
-    if (i < segs) {
-      const k = i * 2;
-      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  return g;
 }

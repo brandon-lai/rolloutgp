@@ -1,3 +1,4 @@
+import { PartThumbnail } from "../PartThumbnail.tsx";
 import { useMemo, useState, type ReactNode } from "react";
 import { useApp } from "../state.tsx";
 import { useTurntable } from "../hooks.ts";
@@ -487,6 +488,7 @@ function specLine(p: Part): string[] {
 function PartRow({ p, on, owned, problem, onPick, onBuy }: { p: Part; on: boolean; owned: boolean; problem?: string; onPick: () => void; onBuy: () => void }) {
   return (
     <div className={`part ${on ? "on" : ""} ${owned ? "" : "locked"}`} role="group" aria-label={p.name}>
+      <PartThumbnail part={p} />
       <span className="pname">{p.name}</span>
       <span>
         {on ? (
