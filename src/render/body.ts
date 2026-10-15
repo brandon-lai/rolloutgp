@@ -1,3 +1,7 @@
+import { cutShell } from "./models/shellCuts.ts";
+import { microSurface } from "./surface.ts";
+import { bevelBox } from "./models/parts.ts";
+import { QUALITY, currentQuality } from "./quality.ts";
 // Body (cowl) mesh and paint from a recipe.
 //
 // The shell is a loft through the recipe's cross-sections (superellipses, so a
@@ -41,8 +45,8 @@ export function bodyRings(sections: BodySection[]): Ring[] {
       const t = j / BETWEEN;
       out.push({
         x: p1.x + (p2.x - p1.x) * t,
-        w: Math.max(4, catmull(p0.w, p1.w, p2.w, p3.w, t)),
-        top: Math.max(BODY_SKIRT + 2, catmull(p0.top, p1.top, p2.top, p3.top, t)),
+        w: Math.min(Math.max(p1.w,p2.w), Math.max(Math.min(p1.w,p2.w), catmull(p0.w, p1.w, p2.w, p3.w, t))),
+        top: Math.min(Math.max(p1.top,p2.top), Math.max(Math.min(p1.top,p2.top), catmull(p0.top, p1.top, p2.top, p3.top, t))),
         sq: Math.min(1, Math.max(0, catmull(p0.sq, p1.sq, p2.sq, p3.sq, t))),
       });
     }
@@ -91,7 +95,7 @@ export function shellGeometry(recipe: BodyRecipe): THREE.BufferGeometry {
   // Nose cap: fan to a point just ahead of the first ring, low down.
   const n0 = rings[0];
   const nose = pos.length / 3;
-  pos.push((n0.x + 3) * MM, (BODY_SKIRT + (n0.top - BODY_SKIRT) * 0.35) * MM, 0);
+  pos.push(n0.x * MM, (BODY_SKIRT + (n0.top - BODY_SKIRT) * 0.35) * MM, 0);
   uv.push(0, 0.5);
   for (let k = 0; k < RING; k++) idx.push(nose, k + 1, k);
   // Tail panel.
@@ -107,7 +111,11 @@ export function shellGeometry(recipe: BodyRecipe): THREE.BufferGeometry {
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
-  return g;
+  const holes = Array.from({ length: recipe.holes }, (_, i) => ({
+    u: .25 + Math.floor(i/2) / Math.max(1, Math.ceil(recipe.holes/2)) * .55,
+    v: .5 + (i%2===0?1:-1)*.3, rx: 5/len, ry: 5/girth(recipe),
+  }));
+  return cutShell(g, holes, (recipe.clear ? .28 : .55) * MM);
 }
 
 /** Girth of the widest section, mm (for undistorted decals). */
@@ -122,9 +130,10 @@ export type UploadLookup = (id: string) => HTMLImageElement | ImageBitmap | null
 /** Paint the livery onto a canvas: base, gradient, holes, decals. */
 export function paintCanvas(recipe: BodyRecipe, uploads?: UploadLookup, canvas?: HTMLCanvasElement): HTMLCanvasElement {
   const c = canvas ?? document.createElement("canvas");
-  c.width = TEX_W;
-  c.height = TEX_H;
+  c.width = QUALITY[currentQuality()].texture;
+  c.height = c.width / 2;
   const ctx = c.getContext("2d")!;
+  ctx.scale(c.width / TEX_W, c.height / TEX_H);
   const p = recipe.paint;
   ctx.globalAlpha = 1;
   if (p.gradient === "nose-tail") {
@@ -147,23 +156,6 @@ export function paintCanvas(recipe: BodyRecipe, uploads?: UploadLookup, canvas?:
   // pixels, so squash y to keep stickers round.
   const ky = TEX_H / girth(recipe) / (TEX_W / length);
 
-  // Lightening holes: dark ovals in a row down each flank.
-  const holes = recipe.holes;
-  for (let i = 0; i < holes; i++) {
-    const side = i % 2 === 0 ? 1 : -1;
-    const k = Math.floor(i / 2);
-    const u = 0.25 + (k / Math.max(1, Math.ceil(holes / 2))) * 0.55;
-    const v = 0.5 + side * 0.3;
-    ctx.save();
-    ctx.translate(u * TEX_W, v * TEX_H);
-    ctx.scale(1, ky);
-    ctx.fillStyle = "#14161c";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 26, 18, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
   const draw = (d: Decal, mirrored: boolean) => {
     const v = mirrored ? -d.v : d.v;
     ctx.save();
@@ -182,28 +174,25 @@ export function paintCanvas(recipe: BodyRecipe, uploads?: UploadLookup, canvas?:
   return c;
 }
 
-export function finishMaterial(recipe: BodyRecipe, map: THREE.Texture): THREE.MeshStandardMaterial {
+export function finishMaterial(recipe: BodyRecipe, map: THREE.Texture): THREE.MeshPhysicalMaterial {
   const f = recipe.paint.finish;
-  const m = new THREE.MeshStandardMaterial({ map, side: THREE.DoubleSide });
-  if (f === "metallic") {
-    m.metalness = 0.65;
-    m.roughness = 0.28;
-  } else if (f === "matte") {
-    m.metalness = 0;
-    m.roughness = 0.85;
-  } else if (f === "clear") {
-    m.metalness = 0.1;
-    m.roughness = 0.08;
-    m.transparent = true;
-    m.opacity = 0.62;
-  } else {
-    m.metalness = 0.05;
-    m.roughness = 0.3;
-  }
-  if (recipe.clear && f !== "clear") {
-    // Clear bodies are painted from inside: a touch of see-through at the edges.
-    m.transparent = true;
-    m.opacity = 0.94;
+  const detail = microSurface(Math.min(256, QUALITY[currentQuality()].texture));
+  const m = new THREE.MeshPhysicalMaterial({ map, side: THREE.DoubleSide,
+    metalness: f === 'metallic' ? .55 : 0,
+    roughness: f === 'matte' ? .72 : .26,
+    clearcoat: f === 'matte' ? .05 : 1,
+    clearcoatRoughness: .12,
+    roughnessMap: detail.roughness, normalMap: detail.normal,
+    normalScale: new THREE.Vector2(.15,.15),
+  });
+  if (f === 'clear') {
+    m.transmission = currentQuality() === 'low' ? 0 : .82;
+    m.thickness = .28 * MM;
+    m.ior = 1.58;
+    m.attenuationColor.set(recipe.paint.base);
+    m.attenuationDistance = .08;
+    m.roughness = .12;
+    if (currentQuality() === 'low') { m.transparent = true; m.opacity = .45; }
   }
   return m;
 }
@@ -221,15 +210,15 @@ export function addonMeshes(recipe: BodyRecipe, accent: THREE.Material, glass: T
       const lift = 6 + 16 * s;
       const chord = 14 + 12 * s;
       const span = halfW * 2 * (0.75 + 0.2 * s);
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(chord * MM, 1.4 * MM, span * MM), accent);
+      const plate = new THREE.Mesh(bevelBox(chord * MM, 1.4 * MM, span * MM), accent);
       plate.position.set(ad.x * MM, (top + lift) * MM, 0);
       plate.rotation.z = -0.12;
       g.add(plate);
       for (const side of [1, -1]) {
-        const strut = new THREE.Mesh(new THREE.BoxGeometry(6 * MM, lift * MM, 1.4 * MM), accent);
+        const strut = new THREE.Mesh(bevelBox(6 * MM, lift * MM, 1.4 * MM), accent);
         strut.position.set(ad.x * MM, (top + lift / 2) * MM, side * span * 0.32 * MM);
         g.add(strut);
-        const end = new THREE.Mesh(new THREE.BoxGeometry((chord + 4) * MM, (6 + 4 * s) * MM, 1.2 * MM), accent);
+        const end = new THREE.Mesh(bevelBox((chord + 4) * MM, (6 + 4 * s) * MM, 1.2 * MM), accent);
         end.position.set(ad.x * MM, (top + lift) * MM, (side * span) / 2 * MM);
         g.add(end);
       }
@@ -248,10 +237,10 @@ export function addonMeshes(recipe: BodyRecipe, accent: THREE.Material, glass: T
       fin.position.set(ad.x * MM, (top - 1) * MM, 0);
       out.push(fin);
     } else if (ad.kind === "intake") {
-      const box = new THREE.Mesh(new THREE.BoxGeometry((16 + 10 * s) * MM, (5 + 4 * s) * MM, (18 + 10 * s) * MM), accent);
+      const box = new THREE.Mesh(bevelBox((16 + 10 * s) * MM, (5 + 4 * s) * MM, (18 + 10 * s) * MM), accent);
       box.position.set(ad.x * MM, (top + 1.5) * MM, 0);
       out.push(box);
-      const mouth = new THREE.Mesh(new THREE.BoxGeometry(1 * MM, (3 + 3 * s) * MM, (14 + 8 * s) * MM), new THREE.MeshStandardMaterial({ color: 0x0b0d12, roughness: 0.9 }));
+      const mouth = new THREE.Mesh(bevelBox(1 * MM, (3 + 3 * s) * MM, (14 + 8 * s) * MM), new THREE.MeshStandardMaterial({ color: 0x0b0d12, roughness: 0.9 }));
       mouth.position.set((ad.x + (8 + 5 * s)) * MM, (top + 2) * MM, 0);
       out.push(mouth);
     } else if (ad.kind === "canopy") {
@@ -280,10 +269,35 @@ export function bodyObject(recipe: BodyRecipe, uploads?: UploadLookup): { object
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const mat = finishMaterial(recipe, tex);
+  const detailCanvas = document.createElement('canvas');
+  detailCanvas.width = TEX_W; detailCanvas.height = TEX_H;
+  const ctx = detailCanvas.getContext('2d')!;
+  ctx.fillStyle = '#808080'; ctx.fillRect(0,0,TEX_W,TEX_H);
+  ctx.strokeStyle = '#606060'; ctx.lineWidth = 2;
+  for (const y of [TEX_H*.24,TEX_H*.76]) { ctx.beginPath(); ctx.moveTo(80,y); ctx.lineTo(940,y); ctx.stroke(); }
+  const length = recipe.sections[0].x-recipe.sections[recipe.sections.length-1].x;
+  for (const d of recipe.paint.decals) for (const mirror of d.mirror ? [1,-1] : [1]) {
+    ctx.save();ctx.translate(d.u*TEX_W,(.5+d.v*.5*mirror)*TEX_H);
+    ctx.scale(1,TEX_H/girth(recipe)/(TEX_W/length));ctx.rotate(d.rot*Math.PI/180*mirror);
+    drawSticker(ctx,d.sticker,d.size*TEX_W,'#aaaaaa',uploads);ctx.restore();
+  }
+  const pixels = ctx.getImageData(0,0,TEX_W,TEX_H);
+  const normal = new Uint8Array(pixels.data.length);
+  const height = (x: number, y: number) => pixels.data[((Math.max(0,Math.min(TEX_H-1,y)))*TEX_W+Math.max(0,Math.min(TEX_W-1,x)))*4]/255;
+  for(let y=0;y<TEX_H;y++) for(let x=0;x<TEX_W;x++) {
+    const i=(y*TEX_W+x)*4;
+    normal[i]=128+(height(x-1,y)-height(x+1,y))*35;
+    normal[i+1]=128+(height(x,y+1)-height(x,y-1))*35;
+    normal[i+2]=255;normal[i+3]=255;
+  }
+  mat.normalMap?.dispose();
+  mat.normalMap = new THREE.DataTexture(normal,TEX_W,TEX_H);
+  mat.normalMap.needsUpdate = true;
+  mat.normalScale.set(.5,.5);
   const shell = new THREE.Mesh(shellGeometry(recipe), mat);
   shell.castShadow = true;
-  const accent = new THREE.MeshStandardMaterial({ color: recipe.paint.base2, roughness: 0.35, metalness: 0.1 });
-  const glass = new THREE.MeshStandardMaterial({ color: 0x1b2a3a, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.8 });
+  const accent = new THREE.MeshPhysicalMaterial({ color: recipe.paint.base2, roughness: 0.3, metalness: 0.05, clearcoat: 1 });
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x263139, roughness: 0.14, metalness: 0.1, clearcoat: 1 });
   const g = new THREE.Group();
   g.add(shell);
   for (const a of addonMeshes(recipe, accent, glass)) {
@@ -299,6 +313,7 @@ export function bodyObject(recipe: BodyRecipe, uploads?: UploadLookup): { object
         if (m.geometry) m.geometry.dispose();
       });
       tex.dispose();
+      mat.roughnessMap?.dispose(); mat.normalMap?.dispose();
       mat.dispose();
       accent.dispose();
       glass.dispose();

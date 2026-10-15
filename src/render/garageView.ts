@@ -1,4 +1,4 @@
-import { reducedMotion } from "./quality.ts";
+import { reducedMotion, type Quality } from "./quality.ts";
 // The car on a turntable: the home screen, the garage and the body shop. Drag to
 // spin it; it idles round slowly on its own.
 
@@ -137,6 +137,7 @@ export class GarageView implements View {
     this.cogMarker.userData.local = new THREE.Vector3(x * MM, (y + BODY_SKIRT * 0) * MM, 0);
   }
 
+  setQuality(q: Quality) { this.car?.setQuality(q); }
 
   update(dt: number): void {
     if (!this.dragging && !reducedMotion()) {

@@ -1,3 +1,4 @@
+import type { Quality } from "./quality.ts";
 // The trackside view of a race: the track, the cars, and cameras that follow
 // the action like a TV broadcast. Car poses arrive from the worker as frames;
 // the view draws a moment slightly in the past and interpolates between the two
@@ -160,6 +161,7 @@ export class RaceView implements View {
     return this.renderT;
   }
 
+  setQuality(q: Quality) { this.cars.forEach(car => car.setQuality(q)); }
 
   update(dt: number): void {
     const f = this.frames;

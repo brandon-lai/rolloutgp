@@ -1,3 +1,4 @@
+import type { Quality } from "./quality.ts";
 // City run view. Scene units are metres here (the runner's world); the car and
 // the course come from the sim in sim units and sit in a group scaled by 1/10.
 //
@@ -287,6 +288,8 @@ export class CityView implements View {
   setFork(seg: number, choice: number) {
     this.forkChoice.set(seg, choice);
   }
+
+  setQuality(q: Quality) { this.car.setQuality(q); }
 
   update(dt: number): void {
     // Car: draw slightly in the past, interpolated.
