@@ -122,7 +122,10 @@ export class Car {
       .setCanSleep(false)
       .setAngularDamping(0.02);
     this.body = world.createRigidBody(rbDesc);
-    const carGroups = groups(collisionMembership, GROUP.TRACK | GROUP.WORLD | GROUP.CAR);
+    // Cars don't hit each other: on a 3-lane track a car that has lapped you
+    // shares your lane, and a rear-ending would make one car's result depend on
+    // another's. Each car's run is decided by its own build alone.
+    const carGroups = groups(collisionMembership, GROUP.TRACK | GROUP.WORLD);
 
     // Rollers are not Rapier colliders: they meet the lane walls through
     // solveRollers(), against the lane's smooth wall surface. A wall built from

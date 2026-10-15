@@ -466,7 +466,9 @@ export function startPose(geo: TrackGeo, lane: number, clearance: number, latera
 
 export function addTrackColliders(R: Rapier, world: RAPIER_NS.World, geo: TrackGeo): void {
   const ground = world.createRigidBody(R.RigidBodyDesc.fixed());
-  const flags = (process.env.TF ? Number(process.env.TF) : R.TriMeshFlags.FIX_INTERNAL_EDGES | R.TriMeshFlags.MERGE_DUPLICATE_VERTICES | R.TriMeshFlags.ORIENTED) as RAPIER_NS.TriMeshFlags;
+  // The chassis and body still slide on this mesh (landings, bottoming out), and
+  // without internal-edge fixing they catch on every floor seam.
+  const flags = R.TriMeshFlags.FIX_INTERNAL_EDGES | R.TriMeshFlags.MERGE_DUPLICATE_VERTICES | R.TriMeshFlags.ORIENTED;
   world.createCollider(
     R.ColliderDesc.trimesh(geo.positions, geo.indices, flags)
       .setFriction(0.6)

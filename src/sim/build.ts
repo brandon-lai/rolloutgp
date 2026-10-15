@@ -547,10 +547,13 @@ function chassisHull(ch: ChassisPart, ti: TirePart): number[] {
   const hz = ch.tread / 2 - ti.width / 2 - 2;
   const end = ch.length / 2 - 4;
   const flat = ch.wheelbase / 2 + 12;
+  // The bottom is narrower than the top (chamfered edges), so a floor twisting
+  // into a bank doesn't catch the tub's corners.
   const pts: number[] = [];
   for (const sx of [1, -1])
     for (const sz of [1, -1]) {
-      pts.push(sx * flat, 0, sz * hz);
+      pts.push(sx * flat, 0, sz * hz * 0.7);
+      pts.push(sx * flat, 4, sz * hz);
       pts.push(sx * end, 8, sz * hz);
       pts.push(sx * end, 16, sz * hz);
     }
