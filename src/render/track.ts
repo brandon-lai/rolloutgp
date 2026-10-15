@@ -4,7 +4,6 @@
 
 import * as THREE from "three/webgpu";
 import { SAMPLE_STRIDE, TRACK_STAND, type TrackGeo } from "../sim/track/geometry.ts";
-import { LANE_WIDTH, WALL_HEIGHT, WALL_THICK } from "../sim/units.ts";
 
 export const LANE_COLORS = [0xe8402a, 0xffd23f, 0x1f9bd1];
 const RAIL_COLOR = 0x1f6fb4;
@@ -56,7 +55,9 @@ function mesh(p: Part, material: THREE.Material): THREE.Mesh {
 
 export function trackObject(geo: TrackGeo): { object: THREE.Group; dispose(): void } {
   const g = new THREE.Group();
-  const hw = LANE_WIDTH / 2;
+  const hw = geo.lane.width / 2;
+  const WALL_HEIGHT = geo.lane.wall;
+  const WALL_THICK = geo.lane.thick;
   const mats: THREE.Material[] = [];
   const mk = (p: THREE.MeshStandardMaterialParameters) => {
     const m = new THREE.MeshStandardMaterial(p);
@@ -90,7 +91,7 @@ export function trackObject(geo: TrackGeo): { object: THREE.Group; dispose(): vo
   for (const st of geo.strips) {
     const o = 0;
     const d = st.data;
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.12, LANE_WIDTH), lineMat);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.12, geo.lane.width), lineMat);
     plane.rotation.x = -Math.PI / 2;
     const yaw = Math.atan2(-d[o + 5], d[o + 3]);
     plane.rotation.z = yaw;

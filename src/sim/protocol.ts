@@ -3,6 +3,11 @@
 // interpolates between the last two frames.
 
 import type { RaceConfig, RaceEvent, Telemetry, CarStatus } from "./race.ts";
+import type { CityConfig, CityEvent, CityResult, CityStatus } from "./cityRun.ts";
+
+/** Floats in a city frame: x y z qx qy qz qw speedKmh status lap seg volts boost penalty */
+export const CITY_STRIDE = 14;
+export const CITY_STATUS: CityStatus[] = ["racing", "out", "carried", "finished"];
 
 /** Floats per car in a frame. */
 export const CAR_STRIDE = 14;
@@ -33,10 +38,17 @@ export type ToWorker =
   | { type: "speed"; id: number; speed: number }
   | { type: "pit"; id: number; car: string }
   | { type: "stop"; id: number }
-  | { type: "simulate"; id: number; cfg: RaceConfig; replay: boolean };
+  | { type: "simulate"; id: number; cfg: RaceConfig; replay: boolean }
+  | { type: "city"; id: number; cfg: CityConfig }
+  | { type: "cityFork"; id: number; seg: number; choice: number }
+  | { type: "cityCheer"; id: number }
+  | { type: "cityPickup"; id: number }
+  | { type: "cityRescue"; id: number };
 
 export type FromWorker =
   | { type: "ready" }
   | { type: "frame"; id: number; t: number; cars: Float32Array; events: RaceEvent[] }
   | { type: "done"; id: number; result: RaceResult }
-  | { type: "error"; id: number; message: string };
+  | { type: "error"; id: number; message: string }
+  | { type: "cityFrame"; id: number; t: number; car: Float32Array; events: CityEvent[] }
+  | { type: "cityDone"; id: number; result: CityResult };

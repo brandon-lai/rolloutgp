@@ -2,6 +2,19 @@
 
 import type { FromWorker, RaceResult, ToWorker } from "./protocol.ts";
 import type { RaceConfig, RaceEvent } from "./race.ts";
+import type { CityConfig, CityEvent, CityResult } from "./cityRun.ts";
+
+export interface LiveCity {
+  id: number;
+  fork(seg: number, choice: number): void;
+  cheer(): void;
+  pickUp(): void;
+  rescue(): void;
+  stop(): void;
+  done: Promise<CityResult>;
+}
+
+type CityFrameHandler = (t: number, car: Float32Array, events: CityEvent[]) => void;
 
 export interface LiveRace {
   id: number;
@@ -18,6 +31,8 @@ class SimClient {
   private nextId = 1;
   private waiting = new Map<number, { resolve: (r: RaceResult) => void; reject: (e: Error) => void }>();
   private frames = new Map<number, FrameHandler>();
+  private cityFrames = new Map<number, CityFrameHandler>();
+  private cityWaiting = new Map<number, { resolve: (r: CityResult) => void; reject: (e: Error) => void }>();
 
   private get w(): Worker {
     if (!this.worker) {
@@ -38,6 +53,18 @@ class SimClient {
   }
 
   private onMessage(m: FromWorker) {
+    if (m.type === "cityFrame") return this.cityFrames.get(m.id)?.(m.t, m.car, m.events);
+    if (m.type === "cityDone") {
+      this.cityWaiting.get(m.id)?.resolve(m.result);
+      this.cityWaiting.delete(m.id);
+      this.cityFrames.delete(m.id);
+      return;
+    }
+    if (m.type === "error" && this.cityWaiting.has(m.id)) {
+      this.cityWaiting.get(m.id)!.reject(new Error(m.message));
+      this.cityWaiting.delete(m.id);
+      return;
+    }
     if (m.type === "frame") this.frames.get(m.id)?.(m.t, m.cars, m.events);
     else if (m.type === "done") {
       this.waiting.get(m.id)?.resolve(m.result);
@@ -64,6 +91,27 @@ class SimClient {
         this.send({ type: "stop", id });
         this.frames.delete(id);
         this.waiting.delete(id);
+      },
+      done,
+    };
+  }
+
+  /** Start a city run; the car's frames stream to `onFrame`. */
+  city(cfg: CityConfig, onFrame: CityFrameHandler): LiveCity {
+    const id = this.nextId++;
+    this.cityFrames.set(id, onFrame);
+    const done = new Promise<CityResult>((resolve, reject) => this.cityWaiting.set(id, { resolve, reject }));
+    this.send({ type: "city", id, cfg });
+    return {
+      id,
+      fork: (seg, choice) => this.send({ type: "cityFork", id, seg, choice }),
+      cheer: () => this.send({ type: "cityCheer", id }),
+      pickUp: () => this.send({ type: "cityPickup", id }),
+      rescue: () => this.send({ type: "cityRescue", id }),
+      stop: () => {
+        this.send({ type: "stop", id });
+        this.cityFrames.delete(id);
+        this.cityWaiting.delete(id);
       },
       done,
     };

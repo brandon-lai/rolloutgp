@@ -4,7 +4,8 @@
 
 import RAPIER from "@dimforge/rapier3d-deterministic-compat";
 import { Race } from "./race.ts";
-import { CAR_STRIDE, STATUS_CODE, type CarResult, type FromWorker, type RaceResult, type ToWorker } from "./protocol.ts";
+import { CityRun } from "./cityRun.ts";
+import { CAR_STRIDE, CITY_STATUS, CITY_STRIDE, STATUS_CODE, type CarResult, type FromWorker, type RaceResult, type ToWorker } from "./protocol.ts";
 import { DT } from "./units.ts";
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -24,6 +25,52 @@ interface Live {
 }
 
 let live: Live | null = null;
+
+interface LiveCity {
+  id: number;
+  run: CityRun;
+  last: number;
+  target: number;
+  logSent: number;
+  timer: ReturnType<typeof setTimeout> | null;
+}
+let city: LiveCity | null = null;
+
+function stopCity() {
+  if (!city) return;
+  if (city.timer) clearTimeout(city.timer);
+  city.run.free();
+  city = null;
+}
+
+function cityLoop() {
+  const C = city;
+  if (!C) return;
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - C.last) / 1000);
+  C.last = now;
+  C.target += dt;
+  let steps = 0;
+  while (C.run.time + DT <= C.target && C.run.status !== "finished" && steps < 60) {
+    C.run.tick();
+    steps++;
+  }
+  if (steps >= 60) C.target = C.run.time;
+  const r = C.run;
+  const t = r.car.body.translation();
+  const q = r.car.body.rotation();
+  const car = new Float32Array(CITY_STRIDE);
+  car.set([t.x, t.y, t.z, q.x, q.y, q.z, q.w, (r.car.speed() / 10) * 3.6, CITY_STATUS.indexOf(r.status), r.lap, r.seg, r.car.volts, r.car.boost, r.penalty]);
+  const events = r.log.slice(C.logSent);
+  C.logSent = r.log.length;
+  post({ type: "cityFrame", id: C.id, t: r.time, car, events }, [car.buffer]);
+  if (r.status === "finished") {
+    post({ type: "cityDone", id: C.id, result: r.result() });
+    stopCity();
+    return;
+  }
+  C.timer = setTimeout(cityLoop, 8);
+}
 
 const post = (m: FromWorker, transfer: Transferable[] = []) => self.postMessage(m, transfer);
 
@@ -129,6 +176,25 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
         break;
       case "stop":
         if (live && live.id === m.id) stopLive();
+        if (city && city.id === m.id) stopCity();
+        break;
+      case "city": {
+        stopCity();
+        city = { id: m.id, run: new CityRun(RAPIER, m.cfg), last: performance.now(), target: 0, logSent: 0, timer: null };
+        cityLoop();
+        break;
+      }
+      case "cityFork":
+        if (city && city.id === m.id) city.run.setFork(m.seg, m.choice);
+        break;
+      case "cityCheer":
+        if (city && city.id === m.id) city.run.cheer();
+        break;
+      case "cityPickup":
+        if (city && city.id === m.id) city.run.pickUp();
+        break;
+      case "cityRescue":
+        if (city && city.id === m.id) city.run.rescue();
         break;
       case "simulate": {
         const race = new Race(RAPIER, m.cfg);

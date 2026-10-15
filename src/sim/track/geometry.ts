@@ -22,9 +22,13 @@ export type Piece =
   /** A run of bumps. */
   | { kind: "wave"; len: number; bumps: number; amp: number; name?: string }
   /** The lane changer (always 3.4 m): one lane climbs over the other two so every car runs every lane. */
-  | { kind: "lanechange"; len: 3.4; name?: string };
+  | { kind: "lanechange"; len: 3.4; name?: string }
+  /** City: a flight of steps down (negative drop) or up. */
+  | { kind: "stairs"; len: number; steps: number; drop: number; name?: string }
+  /** City: a ramp that ends in a sheer drop back to the ground (a kicker). */
+  | { kind: "kicker"; len: number; rise: number; ramp: number; name?: string };
 
-export type FeatureKind = "corner" | "bank" | "slope" | "dragon" | "wave" | "lanechange" | "straight";
+export type FeatureKind = "corner" | "bank" | "slope" | "dragon" | "wave" | "lanechange" | "straight" | "stairs" | "kicker";
 
 export interface Feature {
   kind: FeatureKind;
@@ -65,6 +69,22 @@ export interface TrackDef {
   difficulty: 1 | 2 | 3 | 4;
   /** Short reading of what the course rewards, for the track picker. */
   rewards: string;
+  /** Street courses: lane width and wall height in metres (default: the official 115 mm / 50 mm). */
+  laneWidth?: number;
+  wallHeight?: number;
+  /** Where the first piece starts (metres, heading in degrees; +heading turns right). Default origin. */
+  start?: { x: number; y: number; z: number; heading: number };
+  /** Open segments (city course branches) don't loop back on themselves. */
+  open?: boolean;
+}
+
+/** Lane dimensions for a track, in sim units. */
+export function laneDims(def: TrackDef): { width: number; wall: number; thick: number } {
+  return {
+    width: def.laneWidth !== undefined ? def.laneWidth * M : LANE_WIDTH,
+    wall: def.wallHeight !== undefined ? def.wallHeight * M : WALL_HEIGHT,
+    thick: def.laneWidth !== undefined ? 0.3 : WALL_THICK,
+  };
 }
 
 export interface TrackGeo {
@@ -81,6 +101,10 @@ export interface TrackGeo {
   /** Where the bridge's supports stand: centreline xh values. */
   pillars: { x: number; y: number; z: number; h: number }[];
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number; maxY: number };
+  /** Where the last piece ends (u, heading in radians). */
+  end: { x: number; y: number; z: number; heading: number };
+  /** Lane width, wall height and wall thickness, u. */
+  lane: { width: number; wall: number; thick: number };
 }
 
 const M = SCALE; // authored metres -> u
@@ -141,6 +165,34 @@ function pieceHeight(p: Piece, t: number): number {
           [L, 0],
         ],
         0.12,
+        t,
+      );
+    }
+    case "stairs": {
+      // Treads with near-vertical risers: a car at speed flies over several.
+      const n = Math.max(1, p.steps);
+      const drop = p.drop * M;
+      const tread = L / (n + 1);
+      const pts: [number, number][] = [[0, 0]];
+      for (let i = 1; i <= n; i++) {
+        const x = tread * i;
+        pts.push([x, (drop * (i - 1)) / n], [x + 0.03, (drop * i) / n]);
+      }
+      pts.push([L, drop]);
+      return rounded(pts, 0.01, t);
+    }
+    case "kicker": {
+      const H = p.rise * M;
+      const ramp = p.ramp * M;
+      return rounded(
+        [
+          [0, 0],
+          [0.3, 0],
+          [0.3 + ramp, H],
+          [0.3 + ramp + 0.03, 0],
+          [L, 0],
+        ],
+        0.25,
         t,
       );
     }
@@ -206,14 +258,19 @@ function stepFor(p: Piece): number {
 }
 
 /** Walk the pieces and sample the centreline. */
-function sampleCentre(def: TrackDef): { samples: CentreSample[]; features: Feature[]; length: number } {
+function sampleCentre(def: TrackDef): { samples: CentreSample[]; features: Feature[]; length: number; end: { x: number; y: number; z: number; heading: number } } {
   const samples: CentreSample[] = [];
   const features: Feature[] = [];
-  let x = 0,
-    z = 0,
-    y = 0,
-    heading = 0,
+  const st0 = def.start;
+  let x = st0 ? st0.x * M : 0,
+    z = st0 ? st0.z * M : 0,
+    y = st0 ? st0.y * M : 0,
+    heading = st0 ? deg(st0.heading) : 0,
     xh = 0;
+  const x0s = x,
+    z0s = z,
+    y0s = y,
+    h0s = heading;
   let cornerN = 0;
   def.pieces.forEach((p, pi) => {
     const L = pieceLen(p);
@@ -268,20 +325,38 @@ function sampleCentre(def: TrackDef): { samples: CentreSample[]; features: Featu
     y = y0 + pieceHeight(p, L);
     const name =
       ("name" in p && p.name) ||
-      (p.kind === "corner" ? `Turn ${++cornerN}` : p.kind === "lanechange" ? "Lane change" : p.kind === "dragon" ? "Dragon back" : p.kind === "wave" ? "Wave section" : p.kind === "slope" ? (p.rise > 0 ? "Climb" : "Descent") : "Straight");
+      (p.kind === "corner"
+        ? `Turn ${++cornerN}`
+        : p.kind === "lanechange"
+          ? "Lane change"
+          : p.kind === "dragon"
+            ? "Dragon back"
+            : p.kind === "wave"
+              ? "Wave section"
+              : p.kind === "stairs"
+                ? "Steps"
+                : p.kind === "kicker"
+                  ? "Kicker"
+                  : p.kind === "slope"
+                    ? p.rise > 0
+                      ? "Climb"
+                      : "Descent"
+                    : "Straight");
     const kind: FeatureKind = p.kind === "corner" ? (p.bank ? "bank" : "corner") : p.kind;
     if (p.kind !== "straight") {
-      features.push({ kind, name, start: xh, end: xh + L, jump: p.kind === "dragon" || p.kind === "lanechange" || p.kind === "wave" || (p.kind === "slope" && p.rise > 0) });
+      features.push({ kind, name, start: xh, end: xh + L, jump: p.kind === "dragon" || p.kind === "lanechange" || p.kind === "wave" || p.kind === "stairs" || p.kind === "kicker" || (p.kind === "slope" && p.rise > 0) });
     }
     xh += L;
   });
   // Closure check: a track that doesn't meet itself can't be raced.
-  const gap = Math.hypot(x, z, y);
-  const turned = heading / (2 * Math.PI);
-  if (gap > 1e-6 || Math.abs(Math.abs(turned) - 1) > 1e-9) {
-    throw new Error(`Track ${def.id} does not close: gap ${gap.toFixed(6)} u, turned ${turned.toFixed(6)} turns`);
+  if (!def.open) {
+    const gap = Math.hypot(x - x0s, z - z0s, y - y0s);
+    const turned = (heading - h0s) / (2 * Math.PI);
+    if (gap > 1e-6 || Math.abs(Math.abs(turned) - 1) > 1e-9) {
+      throw new Error(`Track ${def.id} does not close: gap ${gap.toFixed(6)} u, turned ${turned.toFixed(6)} turns`);
+    }
   }
-  return { samples, features, length: xh };
+  return { samples, features, length: xh, end: { x, y, z, heading } };
 }
 
 /** Lane offset (u, + = right) and extra height for lane `i` at a centreline sample. */
@@ -319,6 +394,7 @@ function laneShape(def: TrackDef, lane: number, c: CentreSample): { off: number;
 
 /** Lane `i` continues as lane next(i) after the start line. */
 function nextLane(def: TrackDef, lane: number): number {
+  if (def.open) return -1;
   if (def.lanes === 1) return 0;
   return def.pieces.some((p) => p.kind === "lanechange") ? (lane + 1) % 3 : lane;
 }
@@ -328,7 +404,7 @@ const memo = new Map<string, TrackGeo>();
 export function buildTrack(def: TrackDef): TrackGeo {
   const cached = memo.get(def.id);
   if (cached && cached.def === def) return cached;
-  const { samples: centre, features, length } = sampleCentre(def);
+  const { samples: centre, features, length, end } = sampleCentre(def);
   const lanes = def.lanes;
   const strips: Strip[] = [];
 
@@ -421,13 +497,14 @@ export function buildTrack(def: TrackDef): TrackGeo {
 
   // Make each strip's last frame exactly the first frame of the strip it joins, so
   // the seams in the collider are watertight.
-  for (const st of strips) {
+  for (const st of def.open ? [] : strips) {
     const nx = strips[st.next];
     const last = (st.count - 1) * SAMPLE_STRIDE;
     for (let j = 0; j < 12; j++) st.data[last + j] = nx.data[j];
   }
 
-  const mesh = sweepMesh(strips);
+  const dims = laneDims(def);
+  const mesh = sweepMesh(strips, dims.width, dims.wall, dims.thick);
   const pillars = bridgePillars(def, strips, centre);
   let minX = Infinity,
     maxX = -Infinity,
@@ -451,6 +528,8 @@ export function buildTrack(def: TrackDef): TrackGeo {
     stripVertexRanges: mesh.ranges,
     pillars,
     bounds: { minX, maxX, minZ, maxZ, maxY },
+    end,
+    lane: dims,
   };
   memo.set(def.id, geo);
   return geo;
@@ -464,8 +543,8 @@ export const TRACK_STAND = 1.0;
  * Sweep the lane cross-section along every strip. The cross-section is a closed
  * U-channel (outer wall, wall top, inner wall, floor, ...), wound outward.
  */
-function sweepMesh(strips: Strip[]): { positions: Float32Array; indices: Uint32Array; ranges: [number, number][] } {
-  const hw = LANE_WIDTH / 2;
+function sweepMesh(strips: Strip[], laneWidth: number, WALL_HEIGHT: number, WALL_THICK: number): { positions: Float32Array; indices: Uint32Array; ranges: [number, number][] } {
+  const hw = laneWidth / 2;
   // (lateral, up) around the channel, counter-clockwise seen from behind (looking along +forward).
   const profile: [number, number][] = [
     [-hw - WALL_THICK, -FLOOR_THICK],

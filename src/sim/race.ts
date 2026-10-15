@@ -6,7 +6,7 @@ import type RAPIER_NS from "@dimforge/rapier3d-deterministic-compat";
 import { Car, GROUP, groups, quatFromBasis, type Pose, type WallSample } from "./car.ts";
 import { carSpec, type Build } from "./build.ts";
 import { buildTrack, frameAt, locate, TRACK_STAND, type TrackDef, type TrackGeo, type Feature } from "./track/geometry.ts";
-import { DT, GRAVITY, LANE_WIDTH, STEP_HZ, WALL_HEIGHT, WALL_THICK, toKmh } from "./units.ts";
+import { DT, GRAVITY, STEP_HZ, toKmh } from "./units.ts";
 import { rng, hash } from "./rng.ts";
 
 type Rapier = typeof RAPIER_NS;
@@ -203,7 +203,7 @@ export class Race {
     }
     if (loc.dist > 1.5) return null;
     const f = frameAt(st, loc.k);
-    return { lateral: loc.lateral, vertical: loc.vertical, r: f.r, u: f.u, halfWidth: LANE_WIDTH / 2, wallHeight: WALL_HEIGHT };
+    return { lateral: loc.lateral, vertical: loc.vertical, r: f.r, u: f.u, halfWidth: this.geo.lane.width / 2, wallHeight: this.geo.lane.wall };
   }
 
   /** Ask for a battery swap the next time this car crosses the start line. */
@@ -342,7 +342,9 @@ export class Race {
     }
 
     // Course-out checks.
-    const hw = LANE_WIDTH / 2;
+    const hw = this.geo.lane.width / 2;
+    const WALL_HEIGHT = this.geo.lane.wall;
+    const WALL_THICK = this.geo.lane.thick;
     const upDot = trackUpDot(car, strip, loc.k);
     let cause: CourseOut["cause"] | null = null;
     if (Math.abs(loc.lateral) > hw + WALL_THICK + 0.03) cause = r.airSince !== null || loc.vertical > WALL_HEIGHT ? "flew off" : "landed outside";
