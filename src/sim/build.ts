@@ -365,8 +365,8 @@ const NOMINAL_V = 3.0;
 export const BATTERY = {
   /** Open-circuit voltage when fresh, V. */
   fresh: 2.78,
-  /** Open-circuit voltage when flat, V. */
-  flat: 2.3,
+  /** Open-circuit voltage when flat, V (cells at 1 V each). */
+  flat: 2.0,
   /** Internal resistance of the pack plus contacts, ohm. */
   resistance: 0.12,
   /** Usable charge, coulombs (1900 mAh). */
@@ -375,9 +375,10 @@ export const BATTERY = {
 
 export function batteryVoltage(used: number): number {
   const f = Math.min(1, Math.max(0, used / BATTERY.capacity));
-  // Flat plateau, then a knee in the last 15%.
-  const plateau = BATTERY.fresh - (BATTERY.fresh - BATTERY.flat) * 0.45 * f;
-  const knee = f > 0.85 ? ((f - 0.85) / 0.15) * (BATTERY.fresh - BATTERY.flat) * 0.55 : 0;
+  // A gentle slope down the plateau, then a knee in the last 15% where the
+  // pack falls away (NiMH cells hold ~1.25 V, then collapse to ~1 V).
+  const plateau = BATTERY.fresh - (BATTERY.fresh - BATTERY.flat) * 0.3 * f;
+  const knee = f > 0.85 ? ((f - 0.85) / 0.15) * (BATTERY.fresh - BATTERY.flat) * 0.7 : 0;
   return plateau - knee;
 }
 

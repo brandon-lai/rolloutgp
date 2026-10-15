@@ -64,7 +64,7 @@ export function ghostConfig(g: Ghost, owner: string, track: TrackDef): RaceConfi
 export const ENDURANCE = {
   laps: 24,
   /** Compresses an hour of battery into a few minutes (game value). */
-  drain: 26,
+  drain: 55,
 };
 
 export function enduranceConfig(build: Build, owner: string, track: TrackDef, seed: number): RaceConfig {

@@ -30,6 +30,7 @@ export function Results({ data }: { data: ResultsData }) {
       setup = { ...s, cfg: trialConfig(build, profile.owner, track, seed), ghosts: g ? [ghostConfig(g, profile.owner, track)] : [], build };
     } else if (s.format === "endurance") setup = { ...s, cfg: enduranceConfig(build, profile.owner, track, seed), build };
     else return go({ name: "tracks" });
+    setup.cfg.open = !profile.settings.regulation;
     go({ name: "race", setup });
   }
 
@@ -144,6 +145,7 @@ export function Results({ data }: { data: ResultsData }) {
               Top speed {t.topKmh.toFixed(1)} km/h · all four wheels left the track {t.hops} times
             </p>
             {t.pitAt !== null && <p className="small muted">Pitted for fresh batteries at {t.pitAt.toFixed(1)} s.</p>}
+            {t.damage.length > 0 && <p className="small" style={{ color: "#ffb3a7" }}>Damage (open class): {t.damage.join(", ")}.</p>}
           </div>
         </div>
 

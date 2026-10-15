@@ -35,6 +35,7 @@ export function Tracks({ initial }: { initial?: Format }) {
       const cup: CupState = { round: 0, results: [], seed };
       setup = { format, trackId: CUP_ROUNDS[0].track.id, cfg: cupConfig(build, profile.owner, cup), ghosts: [], cup, build };
     }
+    setup.cfg.open = !profile.settings.regulation;
     save((p) => ({ ...p, stats: { ...p.stats, races: p.stats.races + 1 } }));
     go({ name: "race", setup });
   }

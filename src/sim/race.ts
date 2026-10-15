@@ -112,6 +112,9 @@ interface Runner {
   /** After a course-out, keep simulating the car briefly so it visibly flies off. */
   coastUntil: number;
   wasGrounded: boolean;
+  lastDamage: number;
+  /** Hardest hit so far, in multiples of the car's weight (open class). */
+  maxImpact: number;
 }
 
 export interface RaceEvent {
@@ -183,6 +186,8 @@ export class Race {
         featureIdx: 0,
         coastUntil: 0,
         wasGrounded: true,
+        lastDamage: -1,
+        maxImpact: 0,
       });
     }
   }
@@ -229,7 +234,16 @@ export class Race {
       this.nextTrace += 1 / TRACE_HZ;
       for (const r of this.runners) this.trace(r);
     }
-    this.queue.drainContactForceEvents(() => {});
+    this.queue.drainContactForceEvents((e) => {
+      if (!this.cfg.open) return;
+      const c1 = this.world.getCollider(e.collider1());
+      const c2 = this.world.getCollider(e.collider2());
+      for (const c of [c1, c2]) {
+        const body = c?.parent();
+        const r = body ? this.runners.find((x) => x.car.body.handle === body.handle) : undefined;
+        if (r) this.impact(r, e.totalForceMagnitude());
+      }
+    });
     const maxT = this.cfg.maxTime ?? 240;
     if (this.runners.every((r) => r.status === "finished" || (r.status === "out" && this.time >= r.coastUntil)) || this.time > maxT) {
       this.done = true;
@@ -270,6 +284,7 @@ export class Race {
       if (this.time >= r.pitUntil) {
         r.status = "racing";
         r.car.running = true;
+        r.lastProgressT = this.time;
         this.log.push({ t: this.time, car: r.entry.id, kind: "pit", text: `${r.entry.name} back out on fresh batteries` });
       }
       return;
@@ -371,6 +386,36 @@ export class Race {
     // AI pit strategy.
     const pb = r.entry.pitBelowVolts;
     if (pb && r.pitsLeft > 0 && !r.pitRequested && car.volts < pb) r.pitRequested = true;
+  }
+
+  /**
+   * Open class: a hard enough hit cracks the body, a harder or repeated one
+   * bends a roller stay, pulling one roller 3 mm inboard (the car then rides
+   * that wall differently). Tougher chassis and unlightened bodies shrug off more.
+   */
+  private impact(r: Runner, force: number): void {
+    const weight = r.car.spec.totalMass * GRAVITY;
+    r.maxImpact = Math.max(r.maxImpact, force / weight);
+    // Clean runs peak around 60x the car's weight on hard landings; crashes run
+    // 60-400x. A sturdy car only breaks in a crash; a lightened shell cracks on
+    // a big landing.
+    const limit = weight * (55 + 60 * r.car.spec.toughness);
+    if (force < limit || this.time - r.lastDamage < 0.5) return;
+    r.lastDamage = this.time;
+    const d = r.telemetry.damage;
+    if (!d.includes("cracked body")) {
+      d.push("cracked body");
+      r.car.spec.aero *= 1.15;
+      this.log.push({ t: this.time, car: r.entry.id, kind: "damage", text: `${r.entry.name} cracked the body` });
+    } else if (force > limit * 1.4 && d.filter((x) => x.startsWith("bent")).length < 2) {
+      const rollers = r.car.spec.rollers;
+      const i = (d.length * 3 + Math.floor(force)) % rollers.length;
+      const ro = rollers[i];
+      ro.z -= Math.sign(ro.z) * 0.03;
+      const where = `${ro.x > 0 ? "front" : "rear"} ${ro.z > 0 ? "right" : "left"}`;
+      d.push(`bent ${where} stay`);
+      this.log.push({ t: this.time, car: r.entry.id, kind: "damage", text: `${r.entry.name} bent the ${where} stay` });
+    }
   }
 
   private lapDone(r: Runner): void {
